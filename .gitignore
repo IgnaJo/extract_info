@@ -1,0 +1,61 @@
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+.env/
+.env.bak/
+venv.bak/
+
+# Environment files (keep a safe template tracked if needed)
+.env
+.env.*
+!.env.example
+
+# Testing and coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.coverage.*
+*.cover
+
+# Tooling caches
+.mypy_cache/
+.ruff_cache/
+pip-wheel-metadata/
+
+# Build and packaging
+build/
+dist/
+*.egg-info/
+
+# Logs and databases
+*.log
+*.sqlite3
+*.db
+
+# Secrets and certificates
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+*.der
+
+# OS/editor artifacts
+.DS_Store
+.idea/
+.vscode/
+.ipynb_checkpoints/
+
+# Local temp data
+/tmp/
+*.tmp
+*.bak
