@@ -39,6 +39,7 @@ dist/
 *.log
 *.sqlite3
 *.db
+extract_info/logs/*.json
 
 # Secrets and certificates
 *.pem
@@ -51,6 +52,8 @@ dist/
 
 # OS/editor artifacts
 .DS_Store
+.AppleDouble
+._*
 .idea/
 .vscode/
 .ipynb_checkpoints/
@@ -59,3 +62,6 @@ dist/
 /tmp/
 *.tmp
 *.bak
+
+# Local input documents
+assets/**/*.pdf
