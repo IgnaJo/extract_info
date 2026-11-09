@@ -9,10 +9,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from PySide6.QtCore import QSettings, QSize, Qt, QThread, Slot
-from PySide6.QtGui import QAction, QIcon, QKeySequence, QPixmap, QShortcut
+from PySide6.QtCore import QSettings, Qt, QThread, Slot
+from PySide6.QtGui import QAction, QIcon, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
-    QApplication,
     QComboBox,
     QFileDialog,
     QFrame,
@@ -24,15 +23,12 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QProgressBar,
     QPushButton,
-    QSizePolicy,
     QSplitter,
     QStatusBar,
     QStyle,
-    QToolBar,
     QVBoxLayout,
     QWidget,
 )
-
 
 from extract_info.gui.widgets.drop_zone import DropZone
 from extract_info.gui.widgets.filter_panel import FilterPanel
@@ -44,9 +40,7 @@ from extract_info.gui.widgets.results_table import (
     configure_headers,
 )
 from extract_info.gui.worker import PDFWorker
-from extract_info.pipelines.base import LogEntry, NodeResult, NODE_SPECS, list_nodes, get_node_spec
-from extract_info.pipelines.retail import retail_process_folder
-from extract_info.pipelines.aseguradora import aseguradora_process_folder
+from extract_info.pipelines.base import LogEntry, NodeResult, get_node_spec, list_nodes
 
 
 class MainWindow(QMainWindow):
@@ -154,7 +148,6 @@ class MainWindow(QMainWindow):
         node_layout.addWidget(self.combo_node)
 
         # Añadir al layout principal horizontal
-        from PySide6.QtWidgets import QHBoxLayout
         main_h = QHBoxLayout()
         main_h.addWidget(title)
         main_h.addStretch()
@@ -171,7 +164,6 @@ class MainWindow(QMainWindow):
 
     def _create_action_bar(self) -> QWidget:
         bar = QWidget()
-        from PySide6.QtWidgets import QHBoxLayout
         layout = QHBoxLayout(bar)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(8)
@@ -200,7 +192,6 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.btn_cancel)
 
         # Separador
-        from PySide6.QtWidgets import QFrame
         sep = QFrame()
         sep.setFrameShape(QFrame.Shape.VLine)
         sep.setFrameShadow(QFrame.Shadow.Sunken)
@@ -253,7 +244,7 @@ class MainWindow(QMainWindow):
         return widget
 
     def _create_bottom_panel(self) -> QWidget:
-        from PySide6.QtWidgets import QHBoxLayout, QVBoxLayout, QWidget
+        from PySide6.QtWidgets import QVBoxLayout, QWidget
 
         bottom = QWidget()
         layout = QHBoxLayout(bottom)
@@ -283,14 +274,17 @@ class MainWindow(QMainWindow):
         self.setStatusBar(self.statusbar)
 
         # Leyenda de estados (izquierda) - inline from _create_legend_widget
-        from PySide6.QtWidgets import QHBoxLayout
         legend = QWidget()
         legend_layout = QHBoxLayout(legend)
         legend_layout.setContentsMargins(8, 0, 8, 0)
         legend_layout.setSpacing(12)
         legend_layout.addWidget(QLabel("Estados:"))
-        legend_layout.addWidget(QLabel("● EXITO", styleSheet="color: #166534; font-size: 8pt;"))
-        legend_layout.addWidget(QLabel("● ADVERTENCIA", styleSheet="color: #92400e; font-size: 8pt;"))
+        legend_layout.addWidget(
+            QLabel("● EXITO", styleSheet="color: #166534; font-size: 8pt;")
+        )
+        legend_layout.addWidget(
+            QLabel("● ADVERTENCIA", styleSheet="color: #92400e; font-size: 8pt;")
+        )
         legend_layout.addWidget(QLabel("● ERROR", styleSheet="color: #991b1b; font-size: 8pt;"))
         self._legend_widget = legend
         self.statusbar.addWidget(self._legend_widget)
@@ -351,7 +345,7 @@ class MainWindow(QMainWindow):
         if splitter_sizes:
             self.splitter.setSizes([int(x) for x in splitter_sizes])
 
-    def closeEvent(self, event) -> None:
+    def closeEvent(self, event) -> None:  # noqa: N802 - override de Qt
         # Save settings (inline _save_settings)
         settings = QSettings("ExtractInfo", "ExtractorPDF")
         settings.setValue("geometry", self.saveGeometry())
@@ -588,12 +582,13 @@ class MainWindow(QMainWindow):
             self.drop_zone._set_selected_path(folder)
 
     def _show_about(self) -> None:
+        current = self._current_node_name or "Ninguno"
         QMessageBox.information(
             self,
             "Acerca de",
             "Extractor de Metadatos PDF\n\n"
             "Versión: 1.0.0\n"
-            f"Pipeline actual: {self._current_node_name if hasattr(self, '_current_node_name') and self._current_node_name else 'Ninguno'}\n\n"
+            f"Pipeline actual: {current}\n\n"
             "Nodos disponibles:\n"
             + "\n".join(f"  - {name}" for name in list_nodes()),
         )

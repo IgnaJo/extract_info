@@ -1,6 +1,5 @@
 """Tests para field validators."""
 
-import pytest
 
 from extract_info.extraction.validators import (
     validate_campos,

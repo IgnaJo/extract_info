@@ -1,10 +1,7 @@
 """Tests para el sistema de pipelines (versión simplificada)."""
 
-import pytest
 
-from extract_info.pipelines.base import LogEntry, NodeResult, NODE_SPECS, list_nodes, get_node_spec, process_folder
-from extract_info.pipelines.retail import retail_process_folder
-from extract_info.pipelines.aseguradora import aseguradora_process_folder
+from extract_info.pipelines.base import LogEntry, NodeResult, get_node_spec, list_nodes
 
 
 class TestNodeResult:

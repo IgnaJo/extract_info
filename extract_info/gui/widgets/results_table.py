@@ -9,16 +9,13 @@ from PySide6.QtCore import (
     QModelIndex,
     QSortFilterProxyModel,
     Qt,
-    Signal,
 )
 from PySide6.QtWidgets import (
     QHeaderView,
     QStyledItemDelegate,
     QStyleOptionViewItem,
     QTableView,
-    QWidget,
 )
-
 
 HEADER_LABELS = {
     "nombre_archivo": "Archivo",
@@ -82,10 +79,10 @@ class ResultTableModel(QAbstractTableModel):
         self._rows = []
         self.endResetModel()
 
-    def rowCount(self, parent: QModelIndex = QModelIndex()) -> int:
+    def rowCount(self, parent: QModelIndex = QModelIndex()) -> int:  # noqa: N802
         return len(self._rows)
 
-    def columnCount(self, parent: QModelIndex = QModelIndex()) -> int:
+    def columnCount(self, parent: QModelIndex = QModelIndex()) -> int:  # noqa: N802
         return len(self._columns)
 
     def data(self, index: QModelIndex, role: int = Qt.ItemDataRole.DisplayRole) -> Any:
@@ -108,7 +105,7 @@ class ResultTableModel(QAbstractTableModel):
 
         return None
 
-    def headerData(
+    def headerData(  # noqa: N802 - override de Qt
         self, section: int, orientation: Qt.Orientation, role: int = Qt.ItemDataRole.DisplayRole
     ) -> Any:
         if orientation == Qt.Orientation.Horizontal:
@@ -147,7 +144,9 @@ class ResultSortFilterProxyModel(QSortFilterProxyModel):
         self._filter_text = text.lower()
         self.invalidateFilter()
 
-    def filterAcceptsRow(self, source_row: int, source_parent: QModelIndex) -> bool:
+    def filterAcceptsRow(  # noqa: N802 - override de Qt
+        self, source_row: int, source_parent: QModelIndex
+    ) -> bool:
         model = self.sourceModel()
         if not isinstance(model, ResultTableModel):
             return True

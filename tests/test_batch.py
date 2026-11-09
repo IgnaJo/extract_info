@@ -1,6 +1,5 @@
 """Tests para batch processor."""
 
-import os
 
 import fitz
 import pytest
@@ -24,11 +23,13 @@ def sample_structure(tmp_path):
     folder1 = tmp_path / "carpeta_1"
     folder1.mkdir()
     _create_test_pdf(
-        "PROTOCOLIZADO N° 11111\nREP N° 2222 DE 01-01-2024\nNombre completo: Ana\nRUT: 11.111.111-1\nVigentes al 01-01-2024",
+        "PROTOCOLIZADO N° 11111\nREP N° 2222 DE 01-01-2024\n"
+        "Nombre completo: Ana\nRUT: 11.111.111-1\nVigentes al 01-01-2024",
         str(folder1 / "doc1.pdf"),
     )
     _create_test_pdf(
-        "PROTOCOLIZADO N° 33333\nREP N° 4444 DE 02-02-2024\nNombre completo: Beto\nRUT: 22.222.222-2\nVigentes al 02-02-2024",
+        "PROTOCOLIZADO N° 33333\nREP N° 4444 DE 02-02-2024\n"
+        "Nombre completo: Beto\nRUT: 22.222.222-2\nVigentes al 02-02-2024",
         str(folder1 / "doc2.pdf"),
     )
 
@@ -63,7 +64,7 @@ class TestProcessFolder:
         assert result.nombre_carpeta == "carpeta_1"
         assert len(result.documentos) == 2
 
-    def testHandles_missing_fields(self, sample_structure):
+    def test_handles_missing_fields(self, sample_structure):
         folder = str(sample_structure / "carpeta_2")
         result = process_folder(folder)
         assert len(result.documentos) == 1

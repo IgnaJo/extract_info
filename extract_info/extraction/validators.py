@@ -31,7 +31,13 @@ def validate_fecha(fecha: str | None, field_name: str, errors: list[str]) -> Non
         errors.append(f"{field_name} (formato inválido)")
 
 
-def validate_numero(value: str | int | None, field_name: str, min_digits: int, max_digits: int, errors: list[str]) -> None:
+def validate_numero(
+    value: str | int | None,
+    field_name: str,
+    min_digits: int,
+    max_digits: int,
+    errors: list[str],
+) -> None:
     """Valida que un valor numérico tenga la cantidad de dígitos correcta."""
     if value is None:
         errors.append(field_name)

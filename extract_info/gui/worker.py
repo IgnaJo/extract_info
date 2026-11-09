@@ -7,9 +7,8 @@ from typing import Callable, Optional
 
 from PySide6.QtCore import QObject, QThread, Signal
 
-from extract_info.pipelines.base import NodeResult
-from extract_info.pipelines.retail import retail_process_folder
 from extract_info.pipelines.aseguradora import aseguradora_process_folder
+from extract_info.pipelines.retail import retail_process_folder
 
 
 class PDFWorker(QObject):

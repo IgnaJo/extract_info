@@ -1,10 +1,9 @@
 """Tests para patrones regex de extracción."""
 
-import pytest
 
 from extract_info.extraction.patterns import (
-    PAT_FECHA_VIGENTE,
     PAT_FECHA_REP_VALUE,
+    PAT_FECHA_VIGENTE,
     PAT_NOMBRE_CC,
     PAT_NOMBRE_NOT,
     PAT_PROTO_VALUE,

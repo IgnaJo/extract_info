@@ -1,6 +1,5 @@
 """Tests para el pipeline de extracción."""
 
-import os
 
 import fitz
 import pytest

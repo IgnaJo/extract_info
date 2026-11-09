@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
-from PySide6.QtCore import Qt, QMimeData, QUrl
+from PySide6.QtCore import QMimeData, Qt, QUrl
 from PySide6.QtWidgets import QApplication
 
 from extract_info.gui.widgets.drop_zone import DropZone
@@ -102,8 +101,8 @@ def test_dropzone_get_selected_path(qapp, tmp_path):
 
 def test_dropzone_drag_active_property(qapp, tmp_path):
     """Property dragActive se actualiza en dragEnter/dragLeave."""
-    from PySide6.QtGui import QDragEnterEvent, QDragLeaveEvent
     from PySide6.QtCore import QPoint
+    from PySide6.QtGui import QDragEnterEvent, QDragLeaveEvent
 
     drop_zone = DropZone()
 

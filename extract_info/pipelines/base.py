@@ -114,7 +114,6 @@ def process_folder(
     success_count = 0
     warning_count = 0
     error_count = 0
-    cancelled = False
 
     for i, discovered_file in enumerate(pdf_files, 1):
         filename = discovered_file.relative_path
@@ -131,7 +130,6 @@ def process_folder(
                     node_name=node_name,
                 )
                 logs.append(log_entry)
-            cancelled = True
             break
 
         pdf_path = discovered_file.path

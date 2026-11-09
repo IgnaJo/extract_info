@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Callable, Optional
-
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
     QComboBox,
@@ -39,7 +37,8 @@ class FilterPanel(QWidget):
         # Selector de pipeline
         layout.addWidget(QLabel("Pipeline:"))
         self._pipeline_combo = QComboBox()
-        self._pipeline_combo.addItems(self._node_names if self._node_names else ["Retail", "Aseguradora"])
+        default_names = ["Retail", "Aseguradora"]
+        self._pipeline_combo.addItems(self._node_names if self._node_names else default_names)
         self._pipeline_combo.setMinimumWidth(160)
         self._pipeline_combo.currentTextChanged.connect(self._emit_filters)
         layout.addWidget(self._pipeline_combo)

@@ -35,7 +35,11 @@ def sample_result():
         ruta_carpeta="/tmp/carpeta_1",
         documentos=[
             _make_doc(nombre_archivo="doc1.pdf"),
-            _make_doc(nombre_archivo="doc2.pdf", estado_extraccion=EstadoExtraccion.ADVERTENCIA, observaciones="Campos faltantes"),
+            _make_doc(
+                nombre_archivo="doc2.pdf",
+                estado_extraccion=EstadoExtraccion.ADVERTENCIA,
+                observaciones="Campos faltantes",
+            ),
         ],
     )
 

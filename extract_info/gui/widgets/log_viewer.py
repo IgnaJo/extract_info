@@ -5,8 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Optional
 
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QColor, QFont, QTextCursor
+from PySide6.QtGui import QFont, QTextCursor
 from PySide6.QtWidgets import QPlainTextEdit, QWidget
 
 from extract_info.pipelines.base import LogEntry

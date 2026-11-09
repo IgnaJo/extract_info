@@ -7,8 +7,8 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QApplication
 
 from extract_info.gui.widgets.results_table import (
-    ResultTableModel,
     ResultSortFilterProxyModel,
+    ResultTableModel,
 )
 
 

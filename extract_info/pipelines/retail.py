@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import os
-from typing import List
 
 from extract_info.models import ContratoSchema
 from extract_info.pipeline import process_pdf

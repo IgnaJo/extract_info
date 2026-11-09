@@ -7,7 +7,6 @@ import pytest
 from extract_info.models import EstadoExtraccion
 from extract_info.pipeline import process_pdf
 
-
 ASSETS_DIR = os.path.join(os.path.dirname(__file__), "..", "assets")
 
 SCRAMBLED_PDFS = [
@@ -53,7 +52,9 @@ class TestScrambledLayout:
             assert result.rut is not None, f"RUT no extraído en {fname}"
             # Verificar formato RUT válido
             import re
-            assert re.match(r"^\d{1,2}\.\d{3}\.\d{3}-[\dkK]$", result.rut), f"RUT formato inválido en {fname}: {result.rut}"
+            assert re.match(r"^\d{1,2}\.\d{3}\.\d{3}-[\dkK]$", result.rut), (
+                f"RUT formato inválido en {fname}: {result.rut}"
+            )
 
     def test_proto_repertorio_extracted(self, sample_results):
         """Proto y Repertorio deben extraerse del bloque de valores."""
@@ -61,15 +62,21 @@ class TestScrambledLayout:
             result = sample_results.get(fname)
             assert result is not None
             assert result.proto is not None and result.proto > 1, f"Proto no extraído en {fname}"
-            assert result.repertorio is not None and result.repertorio > 1, f"Repertorio no extraído en {fname}"
-            assert result.fecha_repertorio is not None, f"Fecha repertorio no extraída en {fname}"
+            assert result.repertorio is not None and result.repertorio > 1, (
+                f"Repertorio no extraído en {fname}"
+            )
+            assert result.fecha_repertorio is not None, (
+                f"Fecha repertorio no extraída en {fname}"
+            )
 
     def test_normal_layout_still_works(self, sample_results):
         """Los layouts normales (una columna) deben seguir funcionando."""
         for fname in NORMAL_PDFS:
             result = sample_results.get(fname)
             assert result is not None
-            assert result.estado_extraccion == EstadoExtraccion.EXITO, f"Normal falló: {fname} - {result.observaciones}"
+            assert result.estado_extraccion == EstadoExtraccion.EXITO, (
+                f"Normal falló: {fname} - {result.observaciones}"
+            )
             assert result.nombre_completo is not None
             assert result.rut is not None
 
@@ -93,14 +100,14 @@ class TestScrambledSpecifics:
         assert result.repertorio == 61004
         assert result.fecha_repertorio == "24-07-2026"
 
-    def test_19116203K_data(self, sample_results):
+    def test_19116203k_data(self, sample_results):
         result = sample_results.get("19116203K_37845508.pdf")
         assert result is not None
         assert "NATALIA EDITH CAVIEDES BORBALAN" in result.nombre_completo
         assert result.rut == "19.116.203-K"
         assert result.proto == 111818
 
-    def test_26536036K_data(self, sample_results):
+    def test_26536036k_data(self, sample_results):
         result = sample_results.get("26536036K_37883492.pdf")
         assert result is not None
         assert "JORGE ERNESTO ORTIZ ORDINOLA" in result.nombre_completo

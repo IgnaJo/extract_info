@@ -1,7 +1,5 @@
 """Tests para text_reader (extracción PyMuPDF)."""
 
-import os
-import tempfile
 
 import fitz
 import pytest

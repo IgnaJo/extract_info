@@ -7,7 +7,6 @@ import pytest
 from extract_info.models import EstadoExtraccion
 from extract_info.pipeline import process_pdf
 
-
 ASSETS_DIR = os.path.join(os.path.dirname(__file__), "..", "assets")
 
 ASSET_PDFS = [
@@ -33,7 +32,9 @@ def sample_results():
 class TestCreditCardExtraction:
     def test_all_extracted(self, sample_results):
         for fname, result in sample_results.items():
-            assert result.estado_extraccion == EstadoExtraccion.EXITO, f"{fname}: {result.observaciones}"
+            assert result.estado_extraccion == EstadoExtraccion.EXITO, (
+                f"{fname}: {result.observaciones}"
+            )
 
     def test_nombre_completo(self, sample_results):
         expected = {
@@ -65,11 +66,15 @@ class TestCreditCardExtraction:
 
     def test_repertorio(self, sample_results):
         for fname, result in sample_results.items():
-            assert result.repertorio is not None and result.repertorio > 1, f"{fname}: rep={result.repertorio}"
+            assert result.repertorio is not None and result.repertorio > 1, (
+                f"{fname}: rep={result.repertorio}"
+            )
 
     def test_fecha_repertorio(self, sample_results):
         for fname, result in sample_results.items():
-            assert result.fecha_repertorio is not None, f"{fname}: fecha_rep={result.fecha_repertorio}"
+            assert result.fecha_repertorio is not None, (
+                f"{fname}: fecha_rep={result.fecha_repertorio}"
+            )
 
     def test_fecha_contrato(self, sample_results):
         for fname, result in sample_results.items():

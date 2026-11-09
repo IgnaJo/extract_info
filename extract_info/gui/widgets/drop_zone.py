@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Callable, Optional
 
-from PySide6.QtCore import QMimeData, Qt, Signal
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import QFrame, QLabel, QVBoxLayout
 
 
@@ -50,7 +50,7 @@ class DropZone(QFrame):
         self._label.setWordWrap(True)
         layout.addWidget(self._label)
 
-    def dragEnterEvent(self, event) -> None:
+    def dragEnterEvent(self, event) -> None:  # noqa: N802 - override de Qt
         if event.mimeData().hasUrls():
             urls = event.mimeData().urls()
             if len(urls) == 1 and urls[0].isLocalFile():
@@ -63,13 +63,13 @@ class DropZone(QFrame):
                     return
         event.ignore()
 
-    def dragLeaveEvent(self, event) -> None:
+    def dragLeaveEvent(self, event) -> None:  # noqa: N802 - override de Qt
         self.setProperty("dragActive", False)
         self.style().unpolish(self)
         self.style().polish(self)
         super().dragLeaveEvent(event)
 
-    def dropEvent(self, event) -> None:
+    def dropEvent(self, event) -> None:  # noqa: N802 - override de Qt
         self.setProperty("dragActive", False)
         self.style().unpolish(self)
         self.style().polish(self)
@@ -84,7 +84,7 @@ class DropZone(QFrame):
                     return
         event.ignore()
 
-    def mousePressEvent(self, event) -> None:
+    def mousePressEvent(self, event) -> None:  # noqa: N802 - override de Qt
         if event.button() == Qt.MouseButton.LeftButton:
             self._open_folder_dialog()
 
@@ -118,6 +118,6 @@ class DropZone(QFrame):
         if self._on_clear_callback:
             self._on_clear_callback()
 
-    def setEnabled(self, enabled: bool) -> None:
+    def setEnabled(self, enabled: bool) -> None:  # noqa: N802 - override de Qt
         super().setEnabled(enabled)
         self.setAcceptDrops(enabled)

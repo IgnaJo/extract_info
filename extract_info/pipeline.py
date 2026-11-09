@@ -9,22 +9,18 @@ from extract_info.extraction.anchors import (
     find_value_near_label,
 )
 from extract_info.extraction.patterns import (
+    PAT_FECHA_FIRMA,
+    PAT_FECHA_REP_VALUE,
     PAT_FECHA_VIGENTE,
+    PAT_FECHA_VIGENTE_BEFORE,
     PAT_FECHA_VIGENTE_FALLBACK,
     PAT_FECHA_VIGENTE_NEXT_LINE,
-    PAT_FECHA_VIGENTE_BEFORE,
-    PAT_FECHA_NACIMIENTO,
     PAT_NOMBRE_CC,
     PAT_NOMBRE_NOT,
-    PAT_NOMBRE_VARIANTS,
     PAT_PROTO_VALUE,
     PAT_REP_VALUE,
-    PAT_FECHA_REP_VALUE,
-    PAT_FECHA_FIRMA,
-    PAT_RUT_CC,
-    PAT_RUT_NOT,
     PAT_RUT_IN_NAME_BLOCK,
-    PAT_RUT_VARIANTS,
+    PAT_RUT_NOT,
     detect_document_type,
 )
 from extract_info.extraction.text_reader import extract_full_text, get_page_count, open_pdf
@@ -207,7 +203,11 @@ def _extract_fields_credit_card(pages, page_count) -> dict:
             rut = formatted
     # Strategy 3: RUT without dash (raw digits like "254398470") - text search fallback
     if not rut and nombre_block:
-        raw_match = re.search(r'(?:Rut|RUT)\s*[:\s]+\s*(\d{5,9}[kK]?)', first_page_text, re.IGNORECASE)
+        raw_match = re.search(
+            r"(?:Rut|RUT)\s*[:\s]+\s*(\d{5,9}[kK]?)",
+            first_page_text,
+            re.IGNORECASE,
+        )
         if raw_match:
             rut_val = raw_match.group(1)
             if '-' not in rut_val and '.' not in rut_val:
@@ -242,7 +242,9 @@ def _extract_fields_credit_card(pages, page_count) -> dict:
                 break
     # Pattern has multiple groups; extract the first non-None date
     if fecha_match:
-        fecha_contrato = (fecha_match.group(1) or fecha_match.group(2) or fecha_match.group(3)).replace("/", "-")
+        fecha_contrato = (
+            fecha_match.group(1) or fecha_match.group(2) or fecha_match.group(3)
+        ).replace("/", "-")
     else:
         fecha_contrato = None
 
@@ -258,7 +260,11 @@ def _extract_fields_credit_card(pages, page_count) -> dict:
     if values and len(values) >= 3:
         proto = values[0]
         repertorio = values[1]
-        fecha_repertorio = values[2].replace("/", "-") if PAT_FECHA_REP_VALUE.match(values[2]) else None
+        fecha_repertorio = (
+            values[2].replace("/", "-")
+            if PAT_FECHA_REP_VALUE.match(values[2])
+            else None
+        )
     elif values and len(values) == 2:
         proto = values[0]
         repertorio = values[1]
@@ -313,12 +319,21 @@ def _extract_fields_notarized(pages, page_count) -> dict:
     if result_fecha:
         fecha_firma = result_fecha[0].replace("/", "-")
 
-    proto = _extract_value_after_anchor(first_page_blocks, re.compile(r"PROTOCOLIZADO\s+N[°º]?\s*(\d+)"))
-    repertorio = _extract_value_after_anchor(first_page_blocks, re.compile(r"(?:\*\*)?REP\s+N[°º]?\s*(\d+)"))
+    proto = _extract_value_after_anchor(
+        first_page_blocks, re.compile(r"PROTOCOLIZADO\s+N[°º]?\s*(\d+)")
+    )
+    repertorio = _extract_value_after_anchor(
+        first_page_blocks, re.compile(r"(?:\*\*)?REP\s+N[°º]?\s*(\d+)")
+    )
 
     fecha_repertorio = None
     if repertorio:
-        match = re.search(rf"REP\s+N[°º]?\s*{re.escape(repertorio)}.*?DE\s*(\d{{2}}[-/]\d{{2}}[-/]\d{{4}})", pages[0].full_text if pages else "", re.IGNORECASE)
+        pattern = (
+            rf"REP\s+N[°º]?\s*{re.escape(repertorio)}"
+            r".*?DE\s*(\d{{2}}[-/]\d{{2}}[-/]\d{{4}})"
+        )
+        page_text = pages[0].full_text if pages else ""
+        match = re.search(pattern, page_text, re.IGNORECASE)
         if match:
             fecha_repertorio = match.group(1).replace("/", "-")
 
@@ -385,8 +400,16 @@ def process_pdf(pdf_path: str, nombre_carpeta: str) -> ContratoSchema:
         nombre_completo=campos["nombre_completo"],
         rut=campos["rut"],
         fecha_contrato=campos["fecha_contrato"],
-        proto=int(campos["proto"]) if campos["proto"] and campos["proto"].isdigit() else None,
-        repertorio=int(campos["repertorio"]) if campos["repertorio"] and campos["repertorio"].isdigit() else None,
+        proto=(
+            int(campos["proto"])
+            if campos["proto"] and campos["proto"].isdigit()
+            else None
+        ),
+        repertorio=(
+            int(campos["repertorio"])
+            if campos["repertorio"] and campos["repertorio"].isdigit()
+            else None
+        ),
         fecha_repertorio=campos["fecha_repertorio"],
         nombre_archivo=nombre_archivo,
         cantidad_hojas=campos["cantidad_hojas"],

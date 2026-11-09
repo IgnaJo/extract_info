@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
-
 import pytest
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QLabel
 
 from extract_info.gui.app import MainWindow
 from extract_info.pipelines.base import list_nodes
@@ -81,7 +79,7 @@ def test_node_selector_changes_model(qapp):
 
 def test_shortcuts_registered(qapp):
     """Atajos F5 y Escape están registrados."""
-    from PySide6.QtGui import QAction, QShortcut
+    from PySide6.QtGui import QShortcut
 
     window = MainWindow()
     window.show()
@@ -113,9 +111,6 @@ def test_statusbar_has_progress_and_legend(qapp):
 
     window.close()
 
-
-# Import QLabel para test anterior
-from PySide6.QtWidgets import QLabel
 
 def test_table_headers_are_responsive_and_readable(qapp):
     """Los headers se ajustan al contenido y su etiqueta completa se lee por defecto."""

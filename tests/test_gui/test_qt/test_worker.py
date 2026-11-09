@@ -5,7 +5,7 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 import pytest
-from PySide6.QtCore import QObject, Signal
+from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QApplication
 
 from extract_info.gui.worker import PDFWorker
@@ -57,7 +57,6 @@ def test_worker_emits_completed_on_success(qapp):
     worker = PDFWorker("Retail", "/fake/path")
     worker.completed.connect(on_completed)
 
-    from extract_info.pipelines.base import NodeResult
     mock_result = NodeResult(
         rows=[{"col": "val"}],
         columns=["col"],
@@ -84,7 +83,10 @@ def test_worker_emits_failed_on_error(qapp):
     worker = PDFWorker("Retail", "/fake/path")
     worker.failed.connect(on_failed)
 
-    with patch("extract_info.gui.worker.retail_process_folder", side_effect=RuntimeError("Test error")):
+    with patch(
+        "extract_info.gui.worker.retail_process_folder",
+        side_effect=RuntimeError("Test error"),
+    ):
         worker.run()
 
     assert "error" in error_received

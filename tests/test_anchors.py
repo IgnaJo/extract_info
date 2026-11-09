@@ -2,8 +2,6 @@
 
 import re
 
-import pytest
-
 from extract_info.extraction.anchors import (
     extract_value_after_anchor,
     find_anchor,
