@@ -2,6 +2,8 @@
 
 import os
 
+import pytest
+
 from extract_info.extraction.file_discovery import discover_pdf_files
 
 
@@ -27,7 +29,10 @@ def test_deduplicates_pdf_reached_through_symlink(tmp_path):
     source_dir.mkdir()
     source_pdf = source_dir / "documento.pdf"
     source_pdf.write_bytes(b"pdf")
-    os.symlink(source_dir, tmp_path / "linked")
+    try:
+        os.symlink(source_dir, tmp_path / "linked")
+    except (OSError, NotImplementedError):
+        pytest.skip("La plataforma no permite crear symlinks")
 
     files = discover_pdf_files(str(tmp_path))
 

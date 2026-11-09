@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+import os
 import subprocess
 import sys
 
@@ -109,7 +110,7 @@ def test_write_pipeline_csvs_one_file_per_folder(tmp_path):
 
     paths = write_pipeline_csvs(results, str(tmp_path / "out"))
 
-    assert [p.rsplit("/", 1)[-1] for p in paths] == ["resultado_a.csv", "resultado_b.csv"]
+    assert [os.path.basename(p) for p in paths] == ["resultado_a.csv", "resultado_b.csv"]
     with open(paths[0], encoding="utf-8-sig", newline="") as handle:
         rows = list(csv.DictReader(handle))
     assert rows == [{"Archivo": "1.pdf", "Estado": "OK"}]

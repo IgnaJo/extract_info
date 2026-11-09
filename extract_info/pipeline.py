@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import re
 
 from extract_info.extraction.anchors import (
@@ -381,7 +382,7 @@ def _extract_fields(pdf_path: str) -> tuple[dict, str]:
 
 def process_pdf(pdf_path: str, nombre_carpeta: str) -> ContratoSchema:
     """Procesa un PDF y retorna un ContratoSchema validado."""
-    nombre_archivo = pdf_path.rsplit("/", 1)[-1]
+    nombre_archivo = os.path.basename(pdf_path)
 
     try:
         campos, doc_type = _extract_fields(pdf_path)

@@ -34,7 +34,27 @@ jobs:
       - name: Test
         env:
           QT_QPA_PLATFORM: offscreen
-        run: pytest -q
+        run: pytest -q --junitxml=junit.xml
+
+      - name: Annotate test failures
+        if: failure()
+        shell: python
+        run: |
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
+
+          report = Path("junit.xml")
+          if not report.exists():
+              print("::error::pytest no generó junit.xml")
+          else:
+              for case in ET.parse(report).iter("testcase"):
+                  for node in case.findall("failure") + case.findall("error"):
+                      first_line = (node.get("message") or "").splitlines()[0][:500]
+                      where = case.get("file") or case.get("classname") or ""
+                      print(
+                          f"::error file={where}::"
+                          f"{case.get('classname')}.{case.get('name')}: {first_line}"
+                      )
 
       - name: Build executable
         run: pyinstaller extract_info.spec --noconfirm

@@ -54,7 +54,7 @@ def process_folder(folder_path: str) -> FolderResult:
 
     Retorna FolderResult con los documentos procesados.
     """
-    nombre_carpeta = os.path.basename(folder_path.rstrip("/"))
+    nombre_carpeta = os.path.basename(os.path.normpath(folder_path))
     pdf_files = sorted(
         f for f in os.listdir(folder_path) if f.lower().endswith(".pdf")
     )
@@ -148,7 +148,7 @@ def process_folder_pipeline(folder_path: str, pipeline: str = "retail") -> Pipel
 
     node_result = runner(folder_path)
     return PipelineFolderResult(
-        nombre_carpeta=os.path.basename(folder_path.rstrip("/")),
+        nombre_carpeta=os.path.basename(os.path.normpath(folder_path)),
         rows=node_result.rows,
         columns=node_result.columns,
     )

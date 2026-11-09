@@ -42,10 +42,8 @@ def discover_pdf_files(root_path: str) -> list[DiscoveredFile]:
                 continue
             visited_files.add(real_file)
 
-            discovered.append(DiscoveredFile(
-                path=path,
-                relative_path=os.path.relpath(path, root_path),
-            ))
+            relative_path = os.path.relpath(path, root_path).replace(os.sep, "/")
+            discovered.append(DiscoveredFile(path=path, relative_path=relative_path))
 
     discovered.sort(key=lambda item: item.relative_path)
     return discovered
