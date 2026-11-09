@@ -73,7 +73,7 @@ def test_dropzone_emits_folder_selected(qapp, tmp_path):
 
     drop_zone.dropEvent(event)
 
-    callback.assert_called_once_with(str(test_dir))
+    callback.assert_called_once_with(QUrl.fromLocalFile(str(test_dir)).toLocalFile())
 
 
 def test_dropzone_clear_emits_cleared(qapp):

@@ -22,6 +22,13 @@ NORMAL_PDFS = [
     "102722221_37750836.pdf",
 ]
 
+_ALL_PDFS = SCRAMBLED_PDFS + NORMAL_PDFS
+
+pytestmark = pytest.mark.skipif(
+    not all(os.path.exists(os.path.join(ASSETS_DIR, f)) for f in _ALL_PDFS),
+    reason="Faltan PDFs de muestra locales (assets/*.pdf no se versiona)",
+)
+
 
 @pytest.fixture(scope="module")
 def sample_results():

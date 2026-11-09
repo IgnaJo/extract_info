@@ -18,6 +18,11 @@ ASSET_PDFS = [
     "95282253_38104198.pdf",
 ]
 
+pytestmark = pytest.mark.skipif(
+    not all(os.path.exists(os.path.join(ASSETS_DIR, f)) for f in ASSET_PDFS),
+    reason="Faltan PDFs de muestra locales (assets/*.pdf no se versiona)",
+)
+
 
 @pytest.fixture(scope="module")
 def sample_results():
