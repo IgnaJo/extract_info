@@ -58,3 +58,34 @@ class TestContratoSchema:
     def test_nombre_completo_empty_invalid(self):
         with pytest.raises(Exception):
             ContratoSchema(**_make_valid(nombre_completo=""))
+
+
+class TestCamposOpcionales:
+    """Los campos no extraídos son None, no centinelas con forma válida."""
+
+    def test_campos_extraidos_pueden_ser_none(self):
+        schema = ContratoSchema(**_make_valid(
+            nombre_completo=None, rut=None, fecha_contrato=None,
+            proto=None, repertorio=None, fecha_repertorio=None,
+        ))
+
+        assert schema.nombre_completo is None
+        assert schema.rut is None
+        assert schema.fecha_contrato is None
+        assert schema.proto is None
+        assert schema.repertorio is None
+        assert schema.fecha_repertorio is None
+
+    def test_cantidad_hojas_desconocida_es_none(self):
+        schema = ContratoSchema(**_make_valid(cantidad_hojas=None))
+
+        assert schema.cantidad_hojas is None
+
+    def test_formato_sigue_validandose_cuando_hay_valor(self):
+        with pytest.raises(Exception):
+            ContratoSchema(**_make_valid(rut="12345678"))
+
+    def test_cero_sigue_siendo_invalido(self):
+        for campo in ("proto", "repertorio", "cantidad_hojas"):
+            with pytest.raises(Exception):
+                ContratoSchema(**_make_valid(**{campo: 0}))

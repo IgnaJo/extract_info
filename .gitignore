@@ -63,5 +63,5 @@ extract_info/logs/*.json
 *.tmp
 *.bak
 
-# Local input documents
-assets/**/*.pdf
+# Local input PDFs (test samples / generated data)
+/assets/*.pdf

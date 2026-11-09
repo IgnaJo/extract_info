@@ -3,15 +3,8 @@
 from __future__ import annotations
 
 import re
-from enum import Enum
 
-
-class DocumentType(str, Enum):
-    CREDIT_CARD = "credit_card"
-    NOTARIZED = "notarized"
-
-
-# --- Credit Card Contract Patterns ---
+# Document type detection returns "credit_card" or "notarized"
 
 PAT_NOMBRE_CC = re.compile(
     r"Nombre\s*(?:Completo\s*)?:",
@@ -124,39 +117,16 @@ PAT_RUT_GENERIC = re.compile(
 
 # --- Document Type Detection ---
 
-def detect_document_type(text: str) -> DocumentType:
-    """Detecta el tipo de documento basado en contenido de la primera página."""
+def detect_document_type(text: str) -> str:
+    """Detecta el tipo de documento: 'credit_card' o 'notarized'."""
     has_nombre_completo = bool(re.search(r"Nombre\s+Completo:", text, re.IGNORECASE))
     has_vigente = bool(re.search(r"Vigentes\s+al", text, re.IGNORECASE))
     has_run_firmante = bool(re.search(r"RUN\s+del\s+Firmante", text, re.IGNORECASE))
     has_fecha_firma = bool(re.search(r"Fecha\s+de\s+la\s+Firma", text, re.IGNORECASE))
 
     if has_nombre_completo and has_vigente:
-        return DocumentType.CREDIT_CARD
+        return "credit_card"
     if has_run_firmante or has_fecha_firma:
-        return DocumentType.NOTARIZED
+        return "notarized"
 
-    return DocumentType.CREDIT_CARD
-
-
-# --- Normalization ---
-
-def normalizar_fecha(fecha_str: str) -> str:
-    """Normaliza fecha a formato dd-mm-yyyy."""
-    return fecha_str.replace("/", "-")
-
-
-def extraer_fecha(texto: str, patron: re.Pattern) -> str | None:
-    """Extrae y normaliza la primera fecha encontrada por un patrón."""
-    match = patron.search(texto)
-    if match:
-        return normalizar_fecha(match.group(1) if match.lastindex else match.group(0))
-    return None
-
-
-def extraer_valor_numerico(texto: str, patron: re.Pattern) -> str | None:
-    """Extrae el primer valor numérico encontrado por un patrón."""
-    match = patron.search(texto)
-    if match:
-        return match.group(1)
-    return None
+    return "credit_card"

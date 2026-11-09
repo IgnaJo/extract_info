@@ -47,49 +47,6 @@ def extract_value_after_anchor(
     return None
 
 
-def find_horizontal_neighbor(
-    blocks: list[TextBlock],
-    label_block: TextBlock,
-    label_match: re.Match,
-    max_horizontal_dist: float = 200.0,
-    max_vertical_diff: float = 10.0,
-) -> TextBlock | None:
-    """Busca un bloque vecino horizontal (misma fila, a la derecha) del label.
-
-    Para layouts de 2 columnas donde el label está a la izquierda y el valor a la derecha
-    en la misma línea/fila (mismo Y, diferente X).
-    """
-    label_center_y = (label_block.top + label_block.bottom) / 2
-    # Use label block's left edge as reference, not right edge
-    # because label might be on left side of a wide block
-    label_x_ref = label_block.left
-
-    candidates = []
-    for block in blocks:
-        if block is label_block:
-            continue
-
-        block_center_y = (block.top + block.bottom) / 2
-        vert_diff = abs(block_center_y - label_center_y)
-
-        if vert_diff > max_vertical_diff:
-            continue
-
-        # Block should be to the right of label block's left edge
-        horiz_dist = block.left - label_x_ref
-        if horiz_dist < 5 or horiz_dist > max_horizontal_dist:
-            continue
-
-        if block.text.strip():
-            candidates.append((horiz_dist, vert_diff, block))
-
-    candidates.sort(key=lambda c: (c[0], c[1]))
-
-    if candidates:
-        return candidates[0][2]
-    return None
-
-
 def find_value_near_label(
     blocks: list[TextBlock],
     label_pattern: re.Pattern,
@@ -134,10 +91,26 @@ def find_value_near_label(
             if not looks_like_label:
                 return first_line, label_block
 
-    # Estrategia 2: Vecino horizontal (misma Y, a la derecha)
+    # Estrategia 2: Vecino horizontal (misma Y, a la derecha) - inlined
     if search_horizontal:
-        h_neighbor = find_horizontal_neighbor(blocks, label_block, label_match)
-        if h_neighbor:
+        label_center_y = (label_block.top + label_block.bottom) / 2
+        label_x_ref = label_block.left
+        h_candidates = []
+        for block in blocks:
+            if block is label_block:
+                continue
+            block_center_y = (block.top + block.bottom) / 2
+            vert_diff = abs(block_center_y - label_center_y)
+            if vert_diff > 10.0:
+                continue
+            horiz_dist = block.left - label_x_ref
+            if horiz_dist < 5 or horiz_dist > 200.0:
+                continue
+            if block.text.strip():
+                h_candidates.append((horiz_dist, vert_diff, block))
+        h_candidates.sort(key=lambda c: (c[0], c[1]))
+        if h_candidates:
+            h_neighbor = h_candidates[0][2]
             return h_neighbor.text.strip(), h_neighbor
 
     # Estrategia 3: Vecinos verticales (fallback original)
@@ -167,20 +140,15 @@ def find_value_near_label(
     for _dist, _overlap, candidate_block in candidates:
         text = candidate_block.text.strip()
         if text:
-            return _apply_value_pattern(text, value_pattern), candidate_block
+            # Inlined _apply_value_pattern
+            if value_pattern is None:
+                return text.strip(), candidate_block
+            match = value_pattern.search(text)
+            if match:
+                return (match.group(1) if match.lastindex else match.group(0)), candidate_block
+            return None, candidate_block
 
     return None, None
-
-
-def _apply_value_pattern(text: str, pattern: re.Pattern | None) -> str | None:
-    """Aplica un patrón de valor sobre un texto, o retorna el texto limpio."""
-    if pattern is None:
-        return text.strip()
-
-    match = pattern.search(text)
-    if match:
-        return match.group(1) if match.lastindex else match.group(0)
-    return None
 
 
 def find_values_block_near_label(

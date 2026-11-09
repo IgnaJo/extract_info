@@ -6,13 +6,9 @@ import logging
 import re
 
 from extract_info.extraction.anchors import (
-    extract_value_after_anchor,
     find_value_near_label,
-    find_values_block_near_label,
-    search_in_pages,
 )
 from extract_info.extraction.patterns import (
-    DocumentType,
     PAT_FECHA_VIGENTE,
     PAT_FECHA_VIGENTE_FALLBACK,
     PAT_FECHA_VIGENTE_NEXT_LINE,
@@ -30,7 +26,6 @@ from extract_info.extraction.patterns import (
     PAT_RUT_IN_NAME_BLOCK,
     PAT_RUT_VARIANTS,
     detect_document_type,
-    normalizar_fecha,
 )
 from extract_info.extraction.text_reader import extract_full_text, get_page_count, open_pdf
 from extract_info.extraction.validators import validate_campos
@@ -38,8 +33,138 @@ from extract_info.models import ContratoSchema, EstadoExtraccion
 
 logger = logging.getLogger(__name__)
 
-_SENTINEL_FECHA = "00-00-0000"
-_SENTINEL_RUT = "0.000.000-0"
+def _format_rut(raw: str) -> str | None:
+    """Formatea RUT crudo (solo dígitos) a formato X.XXX.XXX-X con dígito verificador.
+    Returns None si el formato no es válido.
+    """
+    raw_len = len(raw)
+    if raw_len == 8:
+        formatted = raw[0] + '.' + raw[1:4] + '.' + raw[4:7]
+        check_input = int(raw[:7])
+    elif raw_len == 9:
+        formatted = raw[:2] + '.' + raw[2:5] + '.' + raw[5:8]
+        check_input = int(raw[:8])
+    else:
+        return None
+    total = 0
+    multiplier = 2
+    temp = check_input
+    while temp > 0:
+        total += (temp % 10) * multiplier
+        temp //= 10
+        multiplier = multiplier + 1 if multiplier < 7 else 2
+    remainder = 11 - (total % 11)
+    if remainder == 11:
+        verif = '0'
+    elif remainder == 10:
+        verif = 'K'
+    else:
+        verif = str(remainder)
+    return formatted + '-' + verif
+
+
+# --- Inlined from extraction.anchors (single-use) ---
+
+def _extract_value_after_anchor(
+    blocks: list, anchor_pattern: re.Pattern, value_group: int = 1
+) -> str | None:
+    """Extrae el valor adyacente a un anclaje (legacy, mantener compatibilidad)."""
+    for block in blocks:
+        match = anchor_pattern.search(block.text)
+        if match:
+            break
+    else:
+        return None
+
+    if match.lastindex and match.lastindex >= value_group:
+        value = match.group(value_group)
+        if value and value.strip():
+            return value.strip()
+
+    match_end = match.end()
+    remaining = block.text[match_end:].strip()
+    if remaining:
+        return remaining.split("\n")[0].strip()
+
+    try:
+        idx = blocks.index(block)
+    except ValueError:
+        return None
+    if idx + 1 < len(blocks):
+        next_block = blocks[idx + 1]
+        if next_block.top - block.bottom < 30:
+            return next_block.text.strip()
+    return None
+
+
+def _parse_values_block(text: str, expected_count: int) -> list[str]:
+    """Parsea un bloque de texto con múltiples valores separados por espacios/newlines."""
+    parts = re.split(r"\s{2,}|\n", text)
+    values = [p.strip() for p in parts if p.strip()]
+
+    if len(values) >= expected_count:
+        return values[:expected_count]
+
+    return values if values else []
+
+
+def _find_values_block_near_label(
+    blocks: list, label_pattern: re.Pattern, num_values: int = 3, max_vertical_dist: float = 80.0
+) -> list[str] | None:
+    """Busca un bloque de valores múltiples cercano a un label."""
+    label_block = None
+    for block in blocks:
+        if label_pattern.search(block.text):
+            label_block = block
+            break
+
+    if label_block is None:
+        return None
+
+    label_center_y = (label_block.top + label_block.bottom) / 2
+    label_x = label_block.left
+
+    candidates = []
+    for block in blocks:
+        if block is label_block:
+            continue
+
+        block_center_y = (block.top + block.bottom) / 2
+        vert_dist = abs(block_center_y - label_center_y)
+
+        if vert_dist > max_vertical_dist:
+            continue
+
+        horiz_close = block.left >= label_x - 50
+        if horiz_close:
+            candidates.append((vert_dist, block))
+
+    candidates.sort(key=lambda c: c[0])
+
+    for _dist, candidate_block in candidates:
+        text = candidate_block.text.strip()
+        if text:
+            return _parse_values_block(text, num_values)
+
+    return None
+
+
+def _search_in_pages(
+    pages: list, anchor_pattern: re.Pattern, page_indices: list[int] | None = None
+) -> tuple[str, int] | None:
+    """Busca un anclaje en múltiples páginas. Retorna (valor, página)."""
+    indices = page_indices if page_indices is not None else range(len(pages))
+    for idx in indices:
+        if idx >= len(pages):
+            continue
+        page = pages[idx]
+        value = _extract_value_after_anchor(page.blocks, anchor_pattern)
+        if value:
+            return value, page.page_number
+    return None
+
+
+# --- End inlined helpers ---
 
 
 def _extract_fields_credit_card(pages, page_count) -> dict:
@@ -77,34 +202,9 @@ def _extract_fields_credit_card(pages, page_count) -> dict:
     # Format raw RUT if needed (no dots/dash)
     if rut and '-' not in rut and '.' not in rut and len(rut) >= 5:
         raw = rut.rstrip('kK')
-        has_k = rut.upper().endswith('K')
-        raw_len = len(raw)
-        if raw_len == 8:
-            # 7-digit RUT: X.XXX.XXX + check digit
-            formatted = raw[0] + '.' + raw[1:4] + '.' + raw[4:7]
-            check_input = int(raw[:7])
-        elif raw_len == 9:
-            # 8-digit RUT: XX.XXX.XXX + check digit
-            formatted = raw[:2] + '.' + raw[2:5] + '.' + raw[5:8]
-            check_input = int(raw[:8])
-        else:
-            formatted = None
+        formatted = _format_rut(raw)
         if formatted:
-            total = 0
-            multiplier = 2
-            temp = check_input
-            while temp > 0:
-                total += (temp % 10) * multiplier
-                temp //= 10
-                multiplier = multiplier + 1 if multiplier < 7 else 2
-            remainder = 11 - (total % 11)
-            if remainder == 11:
-                verif = '0'
-            elif remainder == 10:
-                verif = 'K'
-            else:
-                verif = str(remainder)
-            rut = formatted + '-' + verif
+            rut = formatted
     # Strategy 3: RUT without dash (raw digits like "254398470") - text search fallback
     if not rut and nombre_block:
         raw_match = re.search(r'(?:Rut|RUT)\s*[:\s]+\s*(\d{5,9}[kK]?)', first_page_text, re.IGNORECASE)
@@ -112,31 +212,9 @@ def _extract_fields_credit_card(pages, page_count) -> dict:
             rut_val = raw_match.group(1)
             if '-' not in rut_val and '.' not in rut_val:
                 raw = rut_val.rstrip('kK')
-                raw_len = len(raw)
-                if raw_len == 8:
-                    formatted = raw[0] + '.' + raw[1:4] + '.' + raw[4:7]
-                    check_input = int(raw[:7])
-                elif raw_len == 9:
-                    formatted = raw[:2] + '.' + raw[2:5] + '.' + raw[5:8]
-                    check_input = int(raw[:8])
-                else:
-                    formatted = None
+                formatted = _format_rut(raw)
                 if formatted:
-                    total = 0
-                    multiplier = 2
-                    temp = check_input
-                    while temp > 0:
-                        total += (temp % 10) * multiplier
-                        temp //= 10
-                        multiplier = multiplier + 1 if multiplier < 7 else 2
-                    remainder = 11 - (total % 11)
-                    if remainder == 11:
-                        verif = '0'
-                    elif remainder == 10:
-                        verif = 'K'
-                    else:
-                        verif = str(remainder)
-                    rut = formatted + '-' + verif
+                    rut = formatted
                 else:
                     rut = rut_val
             else:
@@ -164,17 +242,13 @@ def _extract_fields_credit_card(pages, page_count) -> dict:
                 break
     # Pattern has multiple groups; extract the first non-None date
     if fecha_match:
-        fecha_contrato = normalizar_fecha(fecha_match.group(1) or fecha_match.group(2) or fecha_match.group(3))
+        fecha_contrato = (fecha_match.group(1) or fecha_match.group(2) or fecha_match.group(3)).replace("/", "-")
     else:
         fecha_contrato = None
 
-    # Birth date from "Fecha Nacimiento:" (separate field, not used for contrato)
-    nacimiento_match = PAT_FECHA_NACIMIENTO.search(first_page_text)
-    fecha_nacimiento = normalizar_fecha(nacimiento_match.group(1)) if nacimiento_match else None
-
     proto, repertorio, fecha_repertorio = None, None, None
 
-    values = find_values_block_near_label(
+    values = _find_values_block_near_label(
         first_page_blocks,
         re.compile(r"PROTOCOLIZADO"),
         num_values=3,
@@ -184,7 +258,7 @@ def _extract_fields_credit_card(pages, page_count) -> dict:
     if values and len(values) >= 3:
         proto = values[0]
         repertorio = values[1]
-        fecha_repertorio = normalizar_fecha(values[2]) if PAT_FECHA_REP_VALUE.match(values[2]) else None
+        fecha_repertorio = values[2].replace("/", "-") if PAT_FECHA_REP_VALUE.match(values[2]) else None
     elif values and len(values) == 2:
         proto = values[0]
         repertorio = values[1]
@@ -209,7 +283,6 @@ def _extract_fields_credit_card(pages, page_count) -> dict:
         "nombre_completo": nombre,
         "rut": rut,
         "fecha_contrato": fecha_contrato,
-        "fecha_nacimiento": fecha_nacimiento,
         "proto": proto,
         "repertorio": repertorio,
         "fecha_repertorio": fecha_repertorio,
@@ -228,26 +301,26 @@ def _extract_fields_notarized(pages, page_count) -> dict:
     rut = None
     fecha_firma = None
 
-    result_nombre = search_in_pages(pages, PAT_NOMBRE_NOT, search_pages)
+    result_nombre = _search_in_pages(pages, PAT_NOMBRE_NOT, search_pages)
     if result_nombre:
         nombre = result_nombre[0]
 
-    result_rut = search_in_pages(pages, PAT_RUT_NOT, search_pages)
+    result_rut = _search_in_pages(pages, PAT_RUT_NOT, search_pages)
     if result_rut:
         rut = result_rut[0]
 
-    result_fecha = search_in_pages(pages, PAT_FECHA_FIRMA, search_pages)
+    result_fecha = _search_in_pages(pages, PAT_FECHA_FIRMA, search_pages)
     if result_fecha:
-        fecha_firma = normalizar_fecha(result_fecha[0])
+        fecha_firma = result_fecha[0].replace("/", "-")
 
-    proto = extract_value_after_anchor(first_page_blocks, re.compile(r"PROTOCOLIZADO\s+N[°º]?\s*(\d+)"))
-    repertorio = extract_value_after_anchor(first_page_blocks, re.compile(r"(?:\*\*)?REP\s+N[°º]?\s*(\d+)"))
+    proto = _extract_value_after_anchor(first_page_blocks, re.compile(r"PROTOCOLIZADO\s+N[°º]?\s*(\d+)"))
+    repertorio = _extract_value_after_anchor(first_page_blocks, re.compile(r"(?:\*\*)?REP\s+N[°º]?\s*(\d+)"))
 
     fecha_repertorio = None
     if repertorio:
         match = re.search(rf"REP\s+N[°º]?\s*{re.escape(repertorio)}.*?DE\s*(\d{{2}}[-/]\d{{2}}[-/]\d{{4}})", pages[0].full_text if pages else "", re.IGNORECASE)
         if match:
-            fecha_repertorio = normalizar_fecha(match.group(1))
+            fecha_repertorio = match.group(1).replace("/", "-")
 
     return {
         "nombre_completo": nombre,
@@ -260,7 +333,7 @@ def _extract_fields_notarized(pages, page_count) -> dict:
     }
 
 
-def _extract_fields(pdf_path: str) -> tuple[dict, DocumentType]:
+def _extract_fields(pdf_path: str) -> tuple[dict, str]:
     """Extrae campos crudos del PDF y detecta tipo de documento."""
     doc = open_pdf(pdf_path)
     try:
@@ -276,12 +349,12 @@ def _extract_fields(pdf_path: str) -> tuple[dict, DocumentType]:
                 "repertorio": None,
                 "fecha_repertorio": None,
                 "cantidad_hojas": page_count,
-            }, DocumentType.CREDIT_CARD
+            }, "credit_card"
 
         first_page_text = pages[0].full_text
         doc_type = detect_document_type(first_page_text)
 
-        if doc_type == DocumentType.CREDIT_CARD:
+        if doc_type == "credit_card":
             campos = _extract_fields_credit_card(pages, page_count)
         else:
             campos = _extract_fields_notarized(pages, page_count)
@@ -300,14 +373,7 @@ def process_pdf(pdf_path: str, nombre_carpeta: str) -> ContratoSchema:
     except Exception as e:
         logger.error("Error procesando %s: %s", pdf_path, e)
         return ContratoSchema(
-            nombre_completo="ERROR",
-            rut=_SENTINEL_RUT,
-            fecha_contrato=_SENTINEL_FECHA,
-            proto=1,
-            repertorio=1,
-            fecha_repertorio=_SENTINEL_FECHA,
             nombre_archivo=nombre_archivo,
-            cantidad_hojas=1,
             nombre_carpeta=nombre_carpeta,
             estado_extraccion=EstadoExtraccion.ERROR,
             observaciones=str(e),
@@ -316,14 +382,14 @@ def process_pdf(pdf_path: str, nombre_carpeta: str) -> ContratoSchema:
     estado, observaciones = validate_campos(campos)
 
     return ContratoSchema(
-        nombre_completo=campos["nombre_completo"] or "NO_EXTRAIDO",
-        rut=campos["rut"] or _SENTINEL_RUT,
-        fecha_contrato=campos["fecha_contrato"] or _SENTINEL_FECHA,
-        proto=int(campos["proto"]) if campos["proto"] and campos["proto"].isdigit() else 1,
-        repertorio=int(campos["repertorio"]) if campos["repertorio"] and campos["repertorio"].isdigit() else 1,
-        fecha_repertorio=campos["fecha_repertorio"] or _SENTINEL_FECHA,
+        nombre_completo=campos["nombre_completo"],
+        rut=campos["rut"],
+        fecha_contrato=campos["fecha_contrato"],
+        proto=int(campos["proto"]) if campos["proto"] and campos["proto"].isdigit() else None,
+        repertorio=int(campos["repertorio"]) if campos["repertorio"] and campos["repertorio"].isdigit() else None,
+        fecha_repertorio=campos["fecha_repertorio"],
         nombre_archivo=nombre_archivo,
-        cantidad_hojas=campos["cantidad_hojas"] or 1,
+        cantidad_hojas=campos["cantidad_hojas"],
         nombre_carpeta=nombre_carpeta,
         estado_extraccion=estado,
         observaciones=observaciones,

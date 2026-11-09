@@ -31,12 +31,12 @@ def validate_fecha(fecha: str | None, field_name: str, errors: list[str]) -> Non
         errors.append(f"{field_name} (formato inválido)")
 
 
-def validate_numero(value: str | None, field_name: str, min_digits: int, max_digits: int, errors: list[str]) -> None:
+def validate_numero(value: str | int | None, field_name: str, min_digits: int, max_digits: int, errors: list[str]) -> None:
     """Valida que un valor numérico tenga la cantidad de dígitos correcta."""
-    if not value:
+    if value is None:
         errors.append(field_name)
         return
-    digits = re.sub(r"\D", "", value)
+    digits = re.sub(r"\D", "", str(value))
     if not digits or not (min_digits <= len(digits) <= max_digits):
         errors.append(f"{field_name} ({min_digits}-{max_digits} dígitos requeridos)")
 
@@ -61,8 +61,8 @@ def validate_campos(campos: dict[str, str | int | None]) -> tuple[EstadoExtracci
     validate_required(campos.get("nombre_completo"), "Nombre completo", errors)
     validate_rut(campos.get("rut"), errors)
     validate_fecha(campos.get("fecha_contrato"), "Fecha contrato", errors)
-    validate_numero(str(campos.get("proto")), "Protocolo", 1, 7, errors)
-    validate_numero(str(campos.get("repertorio")), "Repertorio", 1, 7, errors)
+    validate_numero(campos.get("proto"), "Protocolo", 1, 7, errors)
+    validate_numero(campos.get("repertorio"), "Repertorio", 1, 7, errors)
     validate_fecha(campos.get("fecha_repertorio"), "Fecha repertorio", errors)
     validate_paginas(campos.get("cantidad_hojas"), errors)
 

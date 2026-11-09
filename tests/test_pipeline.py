@@ -71,3 +71,27 @@ class TestProcessPdf:
     def test_metadata(self, pdf_ok):
         result = process_pdf(pdf_ok, "carpeta_test")
         assert result.nombre_archivo == "ok.pdf"
+
+
+class TestCamposFaltantesSonNone:
+    def test_pdf_sin_campos_usa_none(self, pdf_missing_fields):
+        result = process_pdf(pdf_missing_fields, "carpeta_test")
+
+        assert result.estado_extraccion == EstadoExtraccion.ADVERTENCIA
+        assert result.nombre_completo is None
+        assert result.rut is None
+        assert result.fecha_contrato is None
+        assert result.cantidad_hojas == 3
+
+    def test_archivo_inexistente_deja_todo_en_none(self):
+        result = process_pdf("/nonexistent/file.pdf", "carpeta_test")
+
+        assert result.estado_extraccion == EstadoExtraccion.ERROR
+        assert result.nombre_completo is None
+        assert result.rut is None
+        assert result.fecha_contrato is None
+        assert result.proto is None
+        assert result.repertorio is None
+        assert result.fecha_repertorio is None
+        assert result.cantidad_hojas is None
+        assert result.observaciones

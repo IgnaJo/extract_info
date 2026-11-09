@@ -8,10 +8,10 @@ from typing import List, Optional, Tuple
 
 import fitz  # PyMuPDF
 
-from extract_info.gui.nodes.base import BaseNode
+from extract_info.pipelines.base import NODE_SPECS, process_folder
 
 
-class AseguradoraNode(BaseNode):
+class AseguradoraNode:
     """Nodo para extracción de documentos de aseguradora.
 
     Adaptado del Extractor.py original, mantiene la funcionalidad
@@ -34,28 +34,6 @@ class AseguradoraNode(BaseNode):
         re.IGNORECASE,
     )
     PAT_FECHA = re.compile(r"\d{2}-\d{2}-\d{4}")
-
-    @property
-    def name(self) -> str:
-        return "Aseguradora"
-
-    @property
-    def description(self) -> str:
-        return "Documentos de Aseguradora - Notarial"
-
-    @property
-    def csv_columns(self) -> List[str]:
-        return [
-            "Archivo",
-            "Fecha Firma",
-            "RUN Firmante",
-            "Nombre Firmante",
-            "REP Nº",
-            "PROTOCOLIZADO Nº",
-            "REP Fecha",
-            "Cantidad de páginas",
-            "Estado",
-        ]
 
     def process_single(self, pdf_path: str) -> dict:
         """Procesa un solo PDF usando el método de Aseguradora.
@@ -123,15 +101,7 @@ class AseguradoraNode(BaseNode):
     def _extract_digits_from_zone(
         self, page: fitz.Page, zone: Tuple[int, int, int, int]
     ) -> Optional[str]:
-        """Extrae dígitos de una zona específica de la página.
-
-        Args:
-            page: Página de PyMuPDF.
-            zone: Tupla (x0, y0, x1, y1) con las coordenadas.
-
-        Returns:
-            String con solo dígitos, o None si no hay dígitos.
-        """
+        """Extrae dígitos de una zona específica de la página."""
         rect = fitz.Rect(zone)
         text = page.get_text("text", clip=rect)
         digits = re.sub(r"\D", "", text)
@@ -140,15 +110,7 @@ class AseguradoraNode(BaseNode):
     def _extract_date_from_zone(
         self, page: fitz.Page, zone: Tuple[int, int, int, int]
     ) -> Optional[str]:
-        """Extrae fecha de una zona específica de la página.
-
-        Args:
-            page: Página de PyMuPDF.
-            zone: Tupla (x0, y0, x1, y1) con las coordenadas.
-
-        Returns:
-            Fecha en formato dd-mm-yyyy, o None si no se encuentra.
-        """
+        """Extrae fecha de una zona específica de la página."""
         rect = fitz.Rect(zone)
         text = page.get_text("text", clip=rect)
         m = self.PAT_FECHA.search(text)
@@ -178,7 +140,7 @@ class AseguradoraNode(BaseNode):
         if not run:
             errores.append("RUN")
         if not nombre:
-            errores.append("Nombre")
+            errores.append("Nombre Firmante")
         if not protocol or not re.fullmatch(r"\d{5,7}", protocol):
             errores.append("PROTOCOLIZADO")
         if not rep_numero or not re.fullmatch(r"\d{4,7}", rep_numero):
@@ -206,3 +168,28 @@ class AseguradoraNode(BaseNode):
             "Cantidad de páginas": 0,
             "Estado": f"ERROR: {error_msg}",
         }
+
+
+def aseguradora_process_single(pdf_path: str) -> dict:
+    """Función wrapper para process_single."""
+    node = AseguradoraNode()
+    return node.process_single(pdf_path)
+
+
+def aseguradora_process_folder(
+    folder_path: str,
+    progress_callback=None,
+    cancel_check=None,
+    pause_event=None,
+):
+    """Procesa una carpeta con el pipeline Aseguradora."""
+    spec = NODE_SPECS["Aseguradora"]
+    return process_folder(
+        folder_path=folder_path,
+        process_single=aseguradora_process_single,
+        node_name=spec["name"],
+        csv_columns=spec["csv_columns"],
+        progress_callback=progress_callback,
+        cancel_check=cancel_check,
+        pause_event=pause_event,
+    )

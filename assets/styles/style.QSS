@@ -1,0 +1,248 @@
+/* ============================================================================
+   HOJA DE ESTILO QSS - APP EXTRACCIÓN PDF
+   Paleta: 
+   Fondo: #FDF4D2 | Primario: #B0CDE6 | Secundario: #A290B7 
+   Alerta: #946D6D | Texto Primario: #2C2626 | Texto Secundario: #5A5252
+============================================================================ */
+
+/* ----------------------------------------------------------------------------
+   1. REGLAS GLOBALES Y VENTANA PRINCIPAL
+--------------------------------------------------------------------------- */
+QWidget {
+    font-family: "Segoe UI", "San Francisco", "Inter", sans-serif;
+    font-size: 14px;
+    color: #2C2626; /* Gris Carbón (Text Primary) */
+}
+
+QMainWindow, QDialog {
+    background-color: #FDF4D2; /* Fondo Crema Principal */
+}
+
+/* ----------------------------------------------------------------------------
+   2. TABLA DE DATOS
+--------------------------------------------------------------------------- */
+QTableView, QTableWidget {
+    background-color: #FFFFFF; /* Fondo de datos para descansar la vista */
+    alternate-background-color: #F9F9F9; /* Zebra striping */
+    gridline-color: #E1DFD6; /* Color de las líneas separadoras */
+    border: 1px solid #E1DFD6;
+    border-radius: 4px;
+    selection-background-color: #B0CDE6; /* Primario al seleccionar */
+    selection-color: #2C2626; /* Texto oscuro sobre la selección (WCAG-AA) */
+}
+
+QTableView::item {
+    padding: 6px 12px;
+}
+
+QTableView::item:hover {
+    /* Hover sutil en filas (Azul primario con transparencia) */
+    background-color: rgba(176, 205, 230, 0.3); 
+}
+
+/* Cabeceras de la tabla */
+QHeaderView::section {
+    background-color: #A290B7; /* Secundario */
+    color: #2C2626;
+    font-weight: 600;
+    padding: 6px 12px;
+    border: 1px solid #E1DFD6;
+    border-top: none;
+    border-left: none;
+}
+
+QHeaderView {
+    background-color: #A290B7;
+    border: none;
+}
+
+/* ----------------------------------------------------------------------------
+   3. BOTONES Y CONTROLES
+--------------------------------------------------------------------------- */
+QPushButton {
+    background-color: #B0CDE6; /* Primario */
+    color: #2C2626;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 16px;
+    font-weight: 600;
+}
+
+QPushButton:hover {
+    background-color: #9DBFDC; /* Oscurecido levemente (~10%) para feedback */
+}
+
+QPushButton:pressed {
+    background-color: #8AAFD2; /* Aún más oscuro al hacer clic */
+}
+
+QPushButton:disabled {
+    background-color: #E1DFD6; /* Gris deshabilitado */
+    color: #5A5252; /* Texto muteado */
+}
+
+/* Botón Destructivo/Alerta (Requiere setObjectName("btnDanger") en PySide6) */
+QPushButton#btnDanger {
+    background-color: #946D6D;
+    color: #FFFFFF; /* Blanco puro para contraste (WCAG-AA) */
+}
+
+QPushButton#btnDanger:hover {
+    background-color: #815C5C;
+}
+
+QPushButton#btnDanger:pressed {
+    background-color: #6F4E4E;
+}
+
+/* ----------------------------------------------------------------------------
+   4. ÁREA DE CARGA Y DROP (Drag & Drop Zone)
+--------------------------------------------------------------------------- */
+/* Requiere envolver el área en un QFrame con setObjectName("dropArea") */
+QFrame#dropArea {
+    background-color: #FEFAEC;
+    border: 2px dashed #A290B7; /* Borde punteado color secundario */
+    border-radius: 6px;
+}
+
+/* Estado dinámico cuando un archivo está sobre el área. 
+   Requiere setProperty("dragActive", True) en PySide6 al entrar el mouse */
+QFrame#dropArea[dragActive="true"] {
+    background-color: rgba(176, 205, 230, 0.2); /* Fondo primario claro */
+    border: 2px dashed #B0CDE6;
+}
+
+/* Texto de ayuda dentro del área de drop */
+QLabel#dropAreaText {
+    color: #5A5252; /* Text Muted */
+    font-size: 14px;
+}
+
+/* ----------------------------------------------------------------------------
+   5. BARRA DE PROGRESO
+--------------------------------------------------------------------------- */
+QProgressBar {
+    background-color: #E1DFD6; /* Carril vacío */
+    border: none;
+    border-radius: 4px;
+    text-align: center;
+    color: #2C2626;
+    font-weight: 600;
+}
+
+QProgressBar::chunk {
+    background-color: #B0CDE6; /* Llenado Primario */
+    border-radius: 4px;
+}
+
+/* ----------------------------------------------------------------------------
+   6. INPUTS Y SELECTS (QLineEdit, QComboBox)
+--------------------------------------------------------------------------- */
+QLineEdit {
+    background-color: #FFFFFF;
+    color: #2C2626;
+    border: 1px solid #E1DFD6;
+    border-radius: 4px;
+    padding: 6px 10px;
+    font-size: 13px;
+}
+QLineEdit:focus {
+    border-color: #B0CDE6;
+    background-color: #FFFFFF;
+}
+
+QComboBox {
+    background-color: #FFFFFF;
+    color: #2C2626;
+    border: 1px solid #E1DFD6;
+    border-radius: 4px;
+    padding: 6px 10px;
+    font-size: 13px;
+    min-width: 140px;
+}
+QComboBox:focus {
+    border-color: #B0CDE6;
+}
+QComboBox::drop-down {
+    border: none;
+    width: 24px;
+}
+QComboBox::down-arrow {
+    image: none;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 6px solid #5A5252;
+    margin-right: 8px;
+}
+QComboBox QAbstractItemView {
+    background-color: #FFFFFF;
+    color: #2C2626;
+    selection-background-color: #B0CDE6;
+    selection-color: #2C2626;
+    border: 1px solid #E1DFD6;
+}
+
+/* ----------------------------------------------------------------------------
+   7. SCROLLBARS (Para evitar el estilo viejo de Windows/SO)
+--------------------------------------------------------------------------- */
+QScrollBar:vertical {
+    border: none;
+    background-color: transparent;
+    width: 12px;
+    margin: 0px 0px 0px 0px;
+}
+
+QScrollBar::handle:vertical {
+    background-color: #A290B7; /* Secundario */
+    min-height: 20px;
+    border-radius: 6px;
+    margin: 2px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background-color: #8C7B9E;
+}
+
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    height: 0px; /* Oculta las flechas arriba/abajo para un look moderno */
+}
+
+QScrollBar:horizontal {
+    border: none;
+    background-color: transparent;
+    height: 12px;
+    margin: 0px 0px 0px 0px;
+}
+
+QScrollBar::handle:horizontal {
+    background-color: #A290B7;
+    min-width: 20px;
+    border-radius: 6px;
+    margin: 2px;
+}
+
+QScrollBar::handle:horizontal:hover {
+    background-color: #8C7B9E;
+}
+
+QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
+    width: 0px;
+}
+
+/* ----------------------------------------------------------------------------
+   8. ROW STATUS COLORS (para ResultRowDelegate)
+--------------------------------------------------------------------------- */
+QTableView::item[rowStatus="exito"] {
+    background-color: #dcfce7; /* SUCCESS_LIGHT */
+    color: #166534; /* verde oscuro */
+}
+
+QTableView::item[rowStatus="advertencia"] {
+    background-color: #fef3c7; /* WARNING_LIGHT */
+    color: #92400e; /* ámbar oscuro */
+}
+
+QTableView::item[rowStatus="error"] {
+    background-color: #fee2e2; /* ERROR_LIGHT */
+    color: #991b1b; /* rojo oscuro */
+}

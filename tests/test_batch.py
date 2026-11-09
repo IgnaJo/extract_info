@@ -5,7 +5,7 @@ import os
 import fitz
 import pytest
 
-from extract_info.batch import FolderResult, get_folder_name, process_batch, process_folder, scan_folders
+from extract_info.batch import FolderResult, process_batch, process_folder, scan_folders
 
 
 def _create_test_pdf(text: str, path: str) -> None:
@@ -53,14 +53,6 @@ class TestScanFolders:
         folders = scan_folders(str(sample_structure))
         for f in folders:
             assert "carpeta_vacia" not in f
-
-
-class TestGetFolderName:
-    def test_simple_path(self):
-        assert get_folder_name("/path/to/my_folder") == "my_folder"
-
-    def test_trailing_slash(self):
-        assert get_folder_name("/path/to/my_folder/") == "my_folder"
 
 
 class TestProcessFolder:

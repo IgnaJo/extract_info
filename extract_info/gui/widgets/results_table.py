@@ -1,198 +1,214 @@
-"""Widget de tabla para mostrar resultados de extracción."""
+"""Tabla de resultados con modelo, proxy para ordenar/filtrar y delegate para estados."""
 
 from __future__ import annotations
 
-import tkinter as tk
-from tkinter import ttk
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from extract_info.gui import theme
+from PySide6.QtCore import (
+    QAbstractTableModel,
+    QModelIndex,
+    QSortFilterProxyModel,
+    Qt,
+    Signal,
+)
+from PySide6.QtWidgets import (
+    QHeaderView,
+    QStyledItemDelegate,
+    QStyleOptionViewItem,
+    QTableView,
+    QWidget,
+)
 
 
-class ResultsTable(tk.Frame):
-    """Tabla read-only para mostrar resultados de extracción.
+HEADER_LABELS = {
+    "nombre_archivo": "Archivo",
+    "nombre_completo": "Nombre Completo",
+    "rut": "RUT",
+    "fecha_contrato": "Fecha Contrato",
+    "proto": "Nº Proto",
+    "repertorio": "Repertorio",
+    "fecha_repertorio": "Fecha Repertorio",
+    "cantidad_hojas": "Hojas",
+    "nombre_carpeta": "Carpeta",
+    "estado_extraccion": "Estado",
+    "observaciones": "Observaciones",
+    "Nombre Firmante": "Nombre",
+    "PROTOCOLIZADO Nº": "Nº Proto",
+    "Cantidad de páginas": "Hojas",
+}
 
-    Se adapta dinámicamente al número y nombre de columnas
-    según el nodo seleccionado.
+
+def display_label(column: str) -> str:
+    """Etiqueta legible para la UI; las columnas del CSV no se tocan."""
+
+    return HEADER_LABELS.get(column, column)
+
+
+def configure_headers(table: QTableView) -> None:
+    """Encabezados legibles por defecto y ajustados al contenido.
+
+    ``ResizeToContents`` recalcula el ancho al cambiar los datos, así que el
+    header completo nunca queda recortado; ``maximumSectionSize`` evita que una
+    columna con textos largos (observaciones) se coma la tabla.
     """
 
-    def __init__(self, parent: tk.Widget, **kwargs):
-        """Inicializa la tabla de resultados.
+    header = table.horizontalHeader()
+    header.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
+    header.setMaximumSectionSize(320)
+    header.setStretchLastSection(True)
+    header.setDefaultAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
 
-        Args:
-            parent: Widget padre de Tkinter.
-            **kwargs: Argumentos adicionales para tk.Frame.
-        """
-        super().__init__(parent, **kwargs)
-        self.configure(bg=theme.BG)
 
-        self.columns: List[str] = []
-        self._col_ids: Dict[str, str] = {}
-        self.data: List[Dict[str, Any]] = []
-        self.filtered_data: List[Dict[str, Any]] = []
+class ResultTableModel(QAbstractTableModel):
+    """Modelo de tabla para resultados de extracción."""
 
-        self._setup_ui()
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._columns: list[str] = []
+        self._rows: list[dict] = []
 
-    def _setup_ui(self) -> None:
-        """Configura la interfaz de la tabla."""
-        header_frame = tk.Frame(self, bg=theme.BG)
-        header_frame.pack(fill=tk.X, padx=5, pady=(5, 0))
+    def set_columns(self, columns: list[str]) -> None:
+        self.beginResetModel()
+        self._columns = columns
+        self.endResetModel()
 
-        self.label_title = tk.Label(
-            header_frame,
-            text="Resultados",
-            font=theme.FONT_BODY_BOLD,
-            fg=theme.TEXT_PRIMARY,
-            bg=theme.BG,
-            anchor="w",
-        )
-        self.label_title.pack(side=tk.LEFT)
-
-        self.label_count = tk.Label(
-            header_frame,
-            text="0 registros",
-            font=theme.FONT_SMALL,
-            fg=theme.TEXT_SECONDARY,
-            bg=theme.BG,
-            anchor="e",
-        )
-        self.label_count.pack(side=tk.RIGHT)
-
-        table_frame = tk.Frame(self, bg=theme.BG)
-        table_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
-
-        self.tree = ttk.Treeview(table_frame, show="headings", selectmode="none")
-
-        v_scroll = ttk.Scrollbar(table_frame, orient=tk.VERTICAL, command=self.tree.yview)
-        h_scroll = ttk.Scrollbar(table_frame, orient=tk.HORIZONTAL, command=self.tree.xview)
-        self.tree.configure(yscrollcommand=v_scroll.set, xscrollcommand=h_scroll.set)
-
-        self.tree.grid(row=0, column=0, sticky="nsew")
-        v_scroll.grid(row=0, column=1, sticky="ns")
-        h_scroll.grid(row=1, column=0, sticky="ew")
-
-        table_frame.grid_rowconfigure(0, weight=1)
-        table_frame.grid_columnconfigure(0, weight=1)
-
-    def set_columns(self, columns: List[str]) -> None:
-        """Actualiza las columnas de la tabla.
-
-        Args:
-            columns: Lista de nombres de columnas.
-        """
-        for item in self.tree.get_children():
-            self.tree.delete(item)
-        self.tree["columns"] = []
-
-        self.columns = columns
-
-        self._col_ids = {}
-        col_ids = []
-        for i, col in enumerate(columns):
-            col_id = f"col{i}"
-            self._col_ids[col_id] = col
-            col_ids.append(col_id)
-
-        self.tree["columns"] = col_ids
-
-        for col_id, display_name in self._col_ids.items():
-            self.tree.heading(col_id, text=display_name, anchor="w")
-            width = max(100, len(display_name) * 10 + 20)
-            self.tree.column(col_id, width=width, minwidth=80, anchor="w")
-
-    def set_data(self, data: List[Dict[str, Any]]) -> None:
-        """Actualiza los datos de la tabla.
-
-        Args:
-            data: Lista de diccionarios con los datos.
-        """
-        self.data = data
-        self.filtered_data = data.copy()
-        self._refresh_table()
-
-    def apply_filters(self, filters: Dict[str, Any]) -> None:
-        """Aplica filtros a los datos mostrados.
-
-        Args:
-            filters: Diccionario con los filtros a aplicar.
-        """
-        self.filtered_data = self.data.copy()
-
-        if filters.get("estado"):
-            self.filtered_data = [
-                row for row in self.filtered_data
-                if self._get_field(row, "estado", "Estado").upper()
-                == filters["estado"].upper()
-            ]
-
-        if filters.get("carpeta"):
-            self.filtered_data = [
-                row for row in self.filtered_data
-                if self._get_field(row, "carpeta", "nombre_carpeta")
-                == filters["carpeta"]
-            ]
-
-        if filters.get("proto"):
-            proto_filter = str(filters["proto"])
-            self.filtered_data = [
-                row for row in self.filtered_data
-                if proto_filter in str(self._get_field(row, "proto", "proto", "PROTOCOLIZADO Nº"))
-            ]
-
-        if filters.get("repertorio"):
-            rep_filter = str(filters["repertorio"])
-            self.filtered_data = [
-                row for row in self.filtered_data
-                if rep_filter in str(self._get_field(row, "rep", "repertorio", "REP Nº"))
-            ]
-
-        self._refresh_table()
-
-    def _get_field(self, row: Dict[str, Any], *field_names: str) -> str:
-        """Obtiene un campo del diccionario probando múltiples nombres.
-
-        Args:
-            row: Diccionario con los datos.
-            *field_names: Nombres posibles del campo.
-
-        Returns:
-            Valor del campo o cadena vacía.
-        """
-        for name in field_names:
-            if name in row and row[name] is not None:
-                return str(row[name])
-        return ""
-
-    def _refresh_table(self) -> None:
-        """Refresca la visualización de la tabla."""
-        for item in self.tree.get_children():
-            self.tree.delete(item)
-
-        for row in self.filtered_data:
-            values = [self._get_field(row, col) for col in self.columns]
-            self.tree.insert("", tk.END, values=values)
-
-        total = len(self.data)
-        shown = len(self.filtered_data)
-        if total == shown:
-            self.label_count.configure(text=f"{total} registros")
-        else:
-            self.label_count.configure(text=f"{shown} de {total} registros")
-
-    def get_selected_rows(self) -> List[Dict[str, Any]]:
-        """Obtiene las filas seleccionadas (para uso futuro).
-
-        Returns:
-            Lista de diccionarios con las filas seleccionadas.
-        """
-        return []
+    def set_data(self, rows: list[dict]) -> None:
+        self.beginResetModel()
+        self._rows = rows
+        self.endResetModel()
 
     def clear(self) -> None:
-        """Limpia la tabla completamente."""
-        self.data = []
-        self.filtered_data = []
-        self._col_ids = {}
-        for item in self.tree.get_children():
-            self.tree.delete(item)
-        self.tree["columns"] = []
-        self.label_count.configure(text="0 registros")
+        self.beginResetModel()
+        self._rows = []
+        self.endResetModel()
+
+    def rowCount(self, parent: QModelIndex = QModelIndex()) -> int:
+        return len(self._rows)
+
+    def columnCount(self, parent: QModelIndex = QModelIndex()) -> int:
+        return len(self._columns)
+
+    def data(self, index: QModelIndex, role: int = Qt.ItemDataRole.DisplayRole) -> Any:
+        if not index.isValid():
+            return None
+
+        row = self._rows[index.row()]
+        col_name = self._columns[index.column()]
+        value = row.get(col_name, "")
+
+        if role == Qt.ItemDataRole.DisplayRole:
+            return str(value) if value is not None else ""
+
+        if role == Qt.ItemDataRole.ToolTipRole:
+            return str(value) if value is not None else ""
+
+        if role == Qt.ItemDataRole.UserRole:
+            # Devolver la fila completa para el delegate de estados
+            return row
+
+        return None
+
+    def headerData(
+        self, section: int, orientation: Qt.Orientation, role: int = Qt.ItemDataRole.DisplayRole
+    ) -> Any:
+        if orientation == Qt.Orientation.Horizontal:
+            if 0 <= section < len(self._columns):
+                column = self._columns[section]
+                if role == Qt.ItemDataRole.DisplayRole:
+                    return display_label(column)
+                if role == Qt.ItemDataRole.ToolTipRole:
+                    return column
+        return None
+
+    def get_row_data(self, row: int) -> dict:
+        if 0 <= row < len(self._rows):
+            return self._rows[row].copy()
+        return {}
+
+
+class ResultSortFilterProxyModel(QSortFilterProxyModel):
+    """Proxy model que filtra y ordena, y expone el estado por fila."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._filter_folder: str = ""
+        self._filter_estado: str = ""
+        self._filter_text: str = ""
+
+    def set_folder_filter(self, folder: str) -> None:
+        self._filter_folder = folder
+        self.invalidateFilter()
+
+    def set_estado_filter(self, estado: str) -> None:
+        self._filter_estado = estado
+        self.invalidateFilter()
+
+    def set_text_filter(self, text: str) -> None:
+        self._filter_text = text.lower()
+        self.invalidateFilter()
+
+    def filterAcceptsRow(self, source_row: int, source_parent: QModelIndex) -> bool:
+        model = self.sourceModel()
+        if not isinstance(model, ResultTableModel):
+            return True
+
+        row_data = model.get_row_data(source_row)
+
+        # Filtro por carpeta
+        if self._filter_folder and self._filter_folder != "Todas":
+            folder_value = str(row_data.get("nombre_carpeta", ""))
+            if folder_value != self._filter_folder:
+                return False
+
+        # Filtro por estado
+        if self._filter_estado and self._filter_estado != "Todos":
+            estado_value = str(
+                row_data.get("Estado", row_data.get("estado_extraccion", ""))
+            )
+            if self._filter_estado not in estado_value:
+                return False
+
+        # Filtro de texto libre
+        if self._filter_text:
+            match = False
+            for value in row_data.values():
+                if self._filter_text in str(value).lower():
+                    match = True
+                    break
+            if not match:
+                return False
+
+        return True
+
+
+class ResultRowDelegate(QStyledItemDelegate):
+    """Delegate que colorea filas según estado (EXITO/ADVERTENCIA/ERROR).
+
+    Usa colores definidos en QSS (assets/styles/style.QSS).
+    """
+
+    def paint(
+        self,
+        painter,
+        option: QStyleOptionViewItem,
+        index: QModelIndex,
+    ) -> None:
+        row_data = index.data(Qt.ItemDataRole.UserRole)
+        if not row_data:
+            super().paint(painter, option, index)
+            return
+
+        estado = str(row_data.get("Estado", row_data.get("estado_extraccion", ""))).upper()
+
+        # Poner propiedad de estado en la opción para que QSS pueda usarla
+        if "OK" in estado or "EXITO" in estado:
+            option.property("rowStatus", "exito")
+        elif "REVISAR" in estado or "ADVERTENCIA" in estado or "WARNING" in estado:
+            option.property("rowStatus", "advertencia")
+        elif "ERROR" in estado:
+            option.property("rowStatus", "error")
+        else:
+            super().paint(painter, option, index)
+            return
+
+        super().paint(painter, option, index)

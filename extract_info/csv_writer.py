@@ -1,13 +1,12 @@
-"""Escritura de archivos CSV por carpeta contenedora."""
+"""Escritura de archivos CSV por carpeta contenedora (stdlib only)."""
 
 from __future__ import annotations
 
+import csv
 import logging
 import os
 
-import pandas as pd
-
-from extract_info.batch import FolderResult
+from extract_info.batch import FolderResult, PipelineFolderResult
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +42,14 @@ def result_to_row(doc) -> dict:
     }
 
 
+def _write_rows(filepath: str, rows: list[dict], columns: list[str]) -> None:
+    """Escribe filas con las columnas indicadas (UTF-8 BOM)."""
+    with open(filepath, "w", newline="", encoding="utf-8-sig") as f:
+        writer = csv.DictWriter(f, fieldnames=columns)
+        writer.writeheader()
+        writer.writerows(rows)
+
+
 def write_folder_csv(folder_result: FolderResult, output_dir: str) -> str:
     """Escribe un CSV para una carpeta procesada.
 
@@ -59,9 +66,8 @@ def write_folder_csv(folder_result: FolderResult, output_dir: str) -> str:
     filepath = os.path.join(output_dir, filename)
 
     rows = [result_to_row(doc) for doc in folder_result.documentos]
-    df = pd.DataFrame(rows, columns=CSV_COLUMNS)
+    _write_rows(filepath, rows, CSV_COLUMNS)
 
-    df.to_csv(filepath, index=False, encoding="utf-8-sig")
     logger.info("CSV generado: %s (%d registros)", filepath, len(rows))
 
     return filepath
@@ -84,30 +90,38 @@ def write_all_csvs(
             logger.warning("Carpeta %s sin documentos, omitiendo CSV", result.nombre_carpeta)
     return paths
 
+def write_pipeline_csvs(
+    results: list[PipelineFolderResult],
+    output_dir: str,
+    unified: bool = False,
+) -> list[str]:
+    """Escribe CSVs para resultados de cualquier pipeline.
 
-def write_unified_csv(
-    folder_results: list[FolderResult], output_dir: str, filename: str = "resultado_unificado.csv"
-) -> str:
-    """Escribe un único CSV unificado con todos los documentos de todas las carpetas.
-
-    Args:
-        folder_results: Lista de resultados de todas las carpetas procesadas.
-        output_dir: Directorio donde se guardará el CSV.
-        filename: Nombre del archivo CSV (por defecto: resultado_unificado.csv).
-
-    Returns:
-        Ruta del archivo CSV generado.
+    Con ``unified=True`` genera un único ``resultado_unificado.csv``;
+    si no, un CSV por carpeta con el mismo nombre que el flujo Retail.
     """
     os.makedirs(output_dir, exist_ok=True)
-    filepath = os.path.join(output_dir, filename)
+    if not results:
+        return []
 
-    all_rows = []
-    for result in folder_results:
-        for doc in result.documentos:
-            all_rows.append(result_to_row(doc))
+    columns = results[0].columns
 
-    df = pd.DataFrame(all_rows, columns=CSV_COLUMNS)
-    df.to_csv(filepath, index=False, encoding="utf-8-sig")
-    logger.info("CSV unificado generado: %s (%d registros)", filepath, len(all_rows))
+    if unified:
+        filepath = os.path.join(output_dir, "resultado_unificado.csv")
+        rows = [row for result in results for row in result.rows]
+        _write_rows(filepath, rows, columns)
+        logger.info("CSV unificado generado: %s (%d registros)", filepath, len(rows))
+        return [filepath]
 
-    return filepath
+    paths = []
+    for result in results:
+        if not result.rows:
+            logger.warning(
+                "Carpeta %s sin documentos, omitiendo CSV", result.nombre_carpeta
+            )
+            continue
+        filepath = os.path.join(output_dir, f"resultado_{result.nombre_carpeta}.csv")
+        _write_rows(filepath, result.rows, result.columns)
+        logger.info("CSV generado: %s (%d registros)", filepath, len(result.rows))
+        paths.append(filepath)
+    return paths

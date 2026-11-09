@@ -3,7 +3,6 @@
 import pytest
 
 from extract_info.extraction.patterns import (
-    DocumentType,
     PAT_FECHA_VIGENTE,
     PAT_FECHA_REP_VALUE,
     PAT_NOMBRE_CC,
@@ -13,31 +12,21 @@ from extract_info.extraction.patterns import (
     PAT_RUT_CC,
     PAT_RUT_NOT,
     detect_document_type,
-    extraer_fecha,
-    normalizar_fecha,
 )
-
-
-class TestNormalizarFecha:
-    def test_slash_to_dash(self):
-        assert normalizar_fecha("25/06/2024") == "25-06-2024"
-
-    def test_already_normalized(self):
-        assert normalizar_fecha("25-06-2024") == "25-06-2024"
 
 
 class TestDetectDocumentType:
     def test_credit_card(self):
         text = "Nombre Completo: Juan\nVigentes al 25/06/2024"
-        assert detect_document_type(text) == DocumentType.CREDIT_CARD
+        assert detect_document_type(text) == "credit_card"
 
     def test_notarized(self):
         text = "RUN del Firmante: 12.345.678-5\nFecha de la Firma: 25-06-2024"
-        assert detect_document_type(text) == DocumentType.NOTARIZED
+        assert detect_document_type(text) == "notarized"
 
     def test_default_credit_card(self):
         text = "Some random text without markers"
-        assert detect_document_type(text) == DocumentType.CREDIT_CARD
+        assert detect_document_type(text) == "credit_card"
 
 
 class TestPatNombreCC:
@@ -129,11 +118,3 @@ class TestPatFechaRepValue:
         match = PAT_FECHA_REP_VALUE.search(texto)
         assert match is not None
         assert match.group(1) == "24-07-2026"
-
-
-class TestExtraerFecha:
-    def test_returns_normalized(self):
-        assert extraer_fecha("Vigentes al 25/06/2024", PAT_FECHA_VIGENTE) == "25-06-2024"
-
-    def test_returns_none_on_no_match(self):
-        assert extraer_fecha("sin fecha", PAT_FECHA_VIGENTE) is None

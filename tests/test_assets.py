@@ -61,16 +61,16 @@ class TestCreditCardExtraction:
 
     def test_proto(self, sample_results):
         for fname, result in sample_results.items():
-            assert result.proto > 1, f"{fname}: proto={result.proto}"
+            assert result.proto is not None and result.proto > 1, f"{fname}: proto={result.proto}"
 
     def test_repertorio(self, sample_results):
         for fname, result in sample_results.items():
-            assert result.repertorio > 1, f"{fname}: rep={result.repertorio}"
+            assert result.repertorio is not None and result.repertorio > 1, f"{fname}: rep={result.repertorio}"
 
     def test_fecha_repertorio(self, sample_results):
         for fname, result in sample_results.items():
-            assert result.fecha_repertorio != "00-00-0000", f"{fname}: fecha_rep={result.fecha_repertorio}"
+            assert result.fecha_repertorio is not None, f"{fname}: fecha_rep={result.fecha_repertorio}"
 
     def test_fecha_contrato(self, sample_results):
         for fname, result in sample_results.items():
-            assert result.fecha_contrato != "00-00-0000", f"{fname}: fecha={result.fecha_contrato}"
+            assert result.fecha_contrato is not None, f"{fname}: fecha={result.fecha_contrato}"

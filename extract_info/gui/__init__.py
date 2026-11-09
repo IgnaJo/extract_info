@@ -1,5 +1,5 @@
-"""Interfaz gráfica para extracción de metadatos PDF."""
+"""Interfaz gráfica para extracción de metadatos PDF (PySide6)."""
 
-from extract_info.gui.app import App
+from extract_info.gui.app import MainWindow
 
-__all__ = ["App"]
+__all__ = ["MainWindow"]

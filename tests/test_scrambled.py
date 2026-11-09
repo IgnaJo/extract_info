@@ -42,7 +42,7 @@ class TestScrambledLayout:
         for fname in SCRAMBLED_PDFS:
             result = sample_results.get(fname)
             assert result is not None, f"PDF no procesado: {fname}"
-            assert result.nombre_completo != "NO_EXTRAIDO", f"Nombre no extraído en {fname}"
+            assert result.nombre_completo is not None, f"Nombre no extraído en {fname}"
             assert len(result.nombre_completo) > 2, f"Nombre muy corto en {fname}"
 
     def test_rut_extracted_from_name_block(self, sample_results):
@@ -50,7 +50,7 @@ class TestScrambledLayout:
         for fname in SCRAMBLED_PDFS:
             result = sample_results.get(fname)
             assert result is not None
-            assert result.rut != "0.000.000-0", f"RUT no extraído en {fname}"
+            assert result.rut is not None, f"RUT no extraído en {fname}"
             # Verificar formato RUT válido
             import re
             assert re.match(r"^\d{1,2}\.\d{3}\.\d{3}-[\dkK]$", result.rut), f"RUT formato inválido en {fname}: {result.rut}"
@@ -60,9 +60,9 @@ class TestScrambledLayout:
         for fname in SCRAMBLED_PDFS + NORMAL_PDFS:
             result = sample_results.get(fname)
             assert result is not None
-            assert result.proto > 1, f"Proto no extraído en {fname}"
-            assert result.repertorio > 1, f"Repertorio no extraído en {fname}"
-            assert result.fecha_repertorio != "00-00-0000", f"Fecha repertorio no extraída en {fname}"
+            assert result.proto is not None and result.proto > 1, f"Proto no extraído en {fname}"
+            assert result.repertorio is not None and result.repertorio > 1, f"Repertorio no extraído en {fname}"
+            assert result.fecha_repertorio is not None, f"Fecha repertorio no extraída en {fname}"
 
     def test_normal_layout_still_works(self, sample_results):
         """Los layouts normales (una columna) deben seguir funcionando."""
@@ -70,15 +70,15 @@ class TestScrambledLayout:
             result = sample_results.get(fname)
             assert result is not None
             assert result.estado_extraccion == EstadoExtraccion.EXITO, f"Normal falló: {fname} - {result.observaciones}"
-            assert result.nombre_completo != "NO_EXTRAIDO"
-            assert result.rut != "0.000.000-0"
+            assert result.nombre_completo is not None
+            assert result.rut is not None
 
     def test_fecha_contrato_normal(self, sample_results):
         """Fecha contrato debe extraerse en layouts normales."""
         for fname in NORMAL_PDFS:
             result = sample_results.get(fname)
             assert result is not None
-            assert result.fecha_contrato != "00-00-0000", f"Fecha contrato no extraída en {fname}"
+            assert result.fecha_contrato is not None, f"Fecha contrato no extraída en {fname}"
 
 
 class TestScrambledSpecifics:

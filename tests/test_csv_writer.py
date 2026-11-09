@@ -91,3 +91,68 @@ class TestWriteAllCsvs:
         output = tmp_path / "new_dir"
         write_all_csvs([sample_result], str(output))
         assert output.exists()
+
+
+def test_none_values_become_empty_cells(tmp_path):
+    """Un campo no extraído sale como celda vacía, no como centinela."""
+    import csv
+
+    result = FolderResult(
+        nombre_carpeta="carpeta_none",
+        ruta_carpeta="/tmp/carpeta_none",
+        documentos=[_make_doc(
+            nombre_archivo="doc.pdf", nombre_completo=None, rut=None,
+            fecha_contrato=None, proto=None, repertorio=None,
+            fecha_repertorio=None, cantidad_hojas=None,
+        )],
+    )
+
+    path = write_folder_csv(result, str(tmp_path))
+
+    with open(path, encoding="utf-8-sig", newline="") as handle:
+        row = next(csv.DictReader(handle))
+    for column in ("nombre_completo", "rut", "fecha_contrato", "proto",
+                   "repertorio", "fecha_repertorio", "cantidad_hojas"):
+        assert row[column] == "", f"{column} debería quedar vacío: {row[column]!r}"
+
+
+RETAIL_CSV_COLUMNS = [
+    "nombre_archivo",
+    "nombre_completo",
+    "rut",
+    "fecha_contrato",
+    "proto",
+    "repertorio",
+    "fecha_repertorio",
+    "cantidad_hojas",
+    "nombre_carpeta",
+    "estado_extraccion",
+    "observaciones",
+]
+
+ASEGURADORA_CSV_COLUMNS = [
+    "Archivo",
+    "Fecha Firma",
+    "RUN Firmante",
+    "Nombre Firmante",
+    "REP Nº",
+    "PROTOCOLIZADO Nº",
+    "REP Fecha",
+    "Cantidad de páginas",
+    "Estado",
+]
+
+
+def test_retail_csv_headers_are_canonical():
+    """Los headers del CSV Retail son contrato con la base general: no se renombran."""
+    from extract_info.pipelines.base import get_node_spec
+
+    assert CSV_COLUMNS == RETAIL_CSV_COLUMNS
+    assert get_node_spec("Retail")["csv_columns"] == RETAIL_CSV_COLUMNS
+
+
+def test_aseguradora_csv_headers_are_canonical():
+    """Los headers del CSV Aseguradora tampoco cambian por estética de UI."""
+    from extract_info.pipelines.base import get_node_spec
+
+    assert get_node_spec("Aseguradora")["csv_columns"] == ASEGURADORA_CSV_COLUMNS
