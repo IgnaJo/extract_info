@@ -152,3 +152,23 @@ def test_table_shows_display_labels_but_keeps_csv_keys(qapp):
     assert model.headerData(5, Qt.Orientation.Horizontal) == "Nº PROTO"
 
     window.close()
+
+
+def test_header_cap_grows_with_font_so_labels_never_clip(qapp):
+    """Con métricas de fuente grandes (p.ej. Windows/DPI) el tope no recorta headers."""
+    from PySide6.QtGui import QFont
+    from PySide6.QtWidgets import QTableView
+
+    from extract_info.gui.widgets.results_table import configure_headers
+    from extract_info.pipelines.base import get_node_spec
+
+    table = QTableView()
+    table.setFont(QFont("Segoe UI", 26))
+    columns = get_node_spec("Banco")["columns"]
+    configure_headers(table, columns)
+
+    header = table.horizontalHeader()
+    fm = header.fontMetrics()
+    widest = max(fm.horizontalAdvance(col.label.upper()) for col in columns)
+    assert widest > 320, "fuente de prueba insuficiente para reproducir el caso"
+    assert header.maximumSectionSize() >= widest

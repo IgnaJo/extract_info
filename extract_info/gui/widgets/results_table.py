@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Sequence
 
 from PySide6.QtCore import (
     QAbstractTableModel,
@@ -21,17 +21,41 @@ def _coerce_column(column: ColumnSpec | str) -> ColumnSpec:
     return column if isinstance(column, ColumnSpec) else ColumnSpec(key=column, label=column)
 
 
-def configure_headers(table: QTableView) -> None:
+_BASE_MAX_SECTION_WIDTH = 320
+
+
+def _maximum_section_size(table: QTableView, columns: Sequence[ColumnSpec | str] | None) -> int:
+    """Tope de ancho que nunca recorta un header completo.
+
+    ``maximumSectionSize`` limita el ancho calculado para el contenido, pero
+    también recortaría el label del header si fuese más ancho. Se parte de 320
+    (evita que ``Observaciones`` se coma la tabla) y se sube al ancho del label
+    más largo, que varía según la fuente/DPI del sistema.
+    """
+
+    if not columns:
+        return _BASE_MAX_SECTION_WIDTH
+    fm = table.horizontalHeader().fontMetrics()
+    widest = max(
+        fm.horizontalAdvance(_coerce_column(column).label.upper()) for column in columns
+    )
+    return max(_BASE_MAX_SECTION_WIDTH, widest + 24)
+
+
+def configure_headers(
+    table: QTableView, columns: Sequence[ColumnSpec | str] | None = None
+) -> None:
     """Encabezados legibles por defecto y ajustados al contenido.
 
     ``ResizeToContents`` recalcula el ancho al cambiar los datos, así que el
     header completo nunca queda recortado; ``maximumSectionSize`` evita que una
-    columna con textos largos (observaciones) se coma la tabla.
+    columna con textos largos (observaciones) se coma la tabla, sin recortar
+    nunca el label del header.
     """
 
     header = table.horizontalHeader()
     header.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
-    header.setMaximumSectionSize(320)
+    header.setMaximumSectionSize(_maximum_section_size(table, columns))
     header.setStretchLastSection(True)
     header.setDefaultAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
 

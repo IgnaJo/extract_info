@@ -235,6 +235,7 @@ class MainWindow(QMainWindow):
             spec = get_node_spec(self._initial_node_name)
             if spec:
                 self._table_model.set_columns(spec["columns"])
+                configure_headers(self._table_view, spec["columns"])
                 self._current_node_name = spec["name"]
             delattr(self, "_initial_node_name")
 
@@ -362,6 +363,7 @@ class MainWindow(QMainWindow):
         spec = get_node_spec(node_name)
         if spec:
             self._table_model.set_columns(spec["columns"])
+            configure_headers(self._table_view, spec["columns"])
             self._table_model.clear()
             self._current_result = None
             self._current_node_name = spec["name"]
