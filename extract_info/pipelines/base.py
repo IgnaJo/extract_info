@@ -43,8 +43,8 @@ NODE_SPECS = {
         "description": "Contratos de tarjeta de crédito - Retail",
         "columns": (
             ColumnSpec("nombre_archivo", "Archivo", ColumnKind.FILENAME),
-            ColumnSpec("nombre_completo", "Nombre Completo"),
             ColumnSpec("rut", "RUT"),
+            ColumnSpec("nombre_completo", "Nombre Completo"),
             ColumnSpec("fecha_contrato", "Fecha Contrato", ColumnKind.DATE),
             ColumnSpec("proto", "Nº Proto"),
             ColumnSpec("repertorio", "Repertorio"),

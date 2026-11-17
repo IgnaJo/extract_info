@@ -122,8 +122,8 @@ def test_none_values_become_empty_cells(tmp_path):
 
 RETAIL_CSV_COLUMNS = [
     "nombre_archivo",
-    "nombre_completo",
     "rut",
+    "nombre_completo",
     "fecha_contrato",
     "proto",
     "repertorio",

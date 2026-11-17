@@ -12,8 +12,8 @@ logger = logging.getLogger(__name__)
 
 CSV_COLUMNS = [
     "nombre_archivo",
-    "nombre_completo",
     "rut",
+    "nombre_completo",
     "fecha_contrato",
     "proto",
     "repertorio",
@@ -29,8 +29,8 @@ def result_to_row(doc) -> dict:
     """Convierte un ContratoSchema a diccionario para CSV."""
     return {
         "nombre_archivo": doc.nombre_archivo,
-        "nombre_completo": doc.nombre_completo,
         "rut": doc.rut,
+        "nombre_completo": doc.nombre_completo,
         "fecha_contrato": doc.fecha_contrato,
         "proto": doc.proto,
         "repertorio": doc.repertorio,

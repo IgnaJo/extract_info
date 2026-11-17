@@ -79,8 +79,8 @@ class TestRetailPipeline:
         spec = get_node_spec("Retail")
         expected = [
             "nombre_archivo",
-            "nombre_completo",
             "rut",
+            "nombre_completo",
             "fecha_contrato",
             "proto",
             "repertorio",
