@@ -47,7 +47,7 @@ def retail_tree(tmp_path):
 
 
 def test_list_pipelines():
-    assert list_pipelines() == ["aseguradora", "retail"]
+    assert list_pipelines() == ["aseguradora", "banco", "retail"]
 
 
 def test_unknown_pipeline_fails_fast(tmp_path):

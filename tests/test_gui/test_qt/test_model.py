@@ -6,6 +6,7 @@ import pytest
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QApplication
 
+from extract_info.columns import ColumnKind, ColumnSpec
 from extract_info.gui.widgets.results_table import (
     ResultSortFilterProxyModel,
     ResultTableModel,
@@ -25,9 +26,9 @@ def test_model_set_columns(qapp):
     model.set_columns(["col1", "col2", "col3"])
 
     assert model.columnCount() == 3
-    assert model.headerData(0, Qt.Orientation.Horizontal) == "col1"
-    assert model.headerData(1, Qt.Orientation.Horizontal) == "col2"
-    assert model.headerData(2, Qt.Orientation.Horizontal) == "col3"
+    assert model.headerData(0, Qt.Orientation.Horizontal) == "COL1"
+    assert model.headerData(1, Qt.Orientation.Horizontal) == "COL2"
+    assert model.headerData(2, Qt.Orientation.Horizontal) == "COL3"
 
 
 def test_model_set_data(qapp):
@@ -153,3 +154,37 @@ def test_proxy_model_filter_text(qapp):
 
     proxy.set_text_filter("noexiste")
     assert proxy.rowCount() == 0
+
+
+def test_model_uses_declared_labels_and_kinds(qapp):
+    """El modelo muestra labels y resuelve claves por kind."""
+    model = ResultTableModel()
+    model.set_columns([
+        ColumnSpec("archivo_real", "Archivo", ColumnKind.FILENAME),
+        ColumnSpec("estado_real", "Estado", ColumnKind.STATUS),
+    ])
+
+    assert model.headerData(0, Qt.Orientation.Horizontal) == "ARCHIVO"
+    assert model.headerData(1, Qt.Orientation.Horizontal) == "ESTADO"
+    assert model.status_key == "estado_real"
+    assert model.folder_key is None
+
+
+def test_proxy_filter_estado_uses_declared_status_column(qapp):
+    """El filtro de estado usa la columna declarada, no 'Estado' fijo."""
+    model = ResultTableModel()
+    model.set_columns([
+        ColumnSpec("nombre", "Nombre"),
+        ColumnSpec("situacion", "Estado", ColumnKind.STATUS),
+    ])
+    model.set_data([
+        {"nombre": "a.pdf", "situacion": "EXITO"},
+        {"nombre": "b.pdf", "situacion": "ERROR"},
+    ])
+
+    proxy = ResultSortFilterProxyModel()
+    proxy.setSourceModel(model)
+
+    proxy.set_estado_filter("ERROR")
+    assert proxy.rowCount() == 1
+    assert proxy.data(proxy.index(0, 0)) == "b.pdf"

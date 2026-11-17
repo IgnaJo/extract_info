@@ -188,7 +188,7 @@ def aseguradora_process_folder(
         folder_path=folder_path,
         process_single=aseguradora_process_single,
         node_name=spec["name"],
-        csv_columns=spec["csv_columns"],
+        columns=spec["columns"],
         progress_callback=progress_callback,
         cancel_check=cancel_check,
         pause_event=pause_event,

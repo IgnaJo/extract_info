@@ -34,7 +34,6 @@ from extract_info.gui.widgets.drop_zone import DropZone
 from extract_info.gui.widgets.filter_panel import FilterPanel
 from extract_info.gui.widgets.log_viewer import LogViewer
 from extract_info.gui.widgets.results_table import (
-    ResultRowDelegate,
     ResultSortFilterProxyModel,
     ResultTableModel,
     configure_headers,
@@ -224,7 +223,6 @@ class MainWindow(QMainWindow):
 
         self._table_view = QTableView()
         self._table_view.setModel(self._proxy_model)
-        self._table_view.setItemDelegate(ResultRowDelegate())
         self._table_view.setSortingEnabled(True)
         self._table_view.setAlternatingRowColors(True)
         self._table_view.setSelectionBehavior(QTableView.SelectionBehavior.SelectRows)
@@ -236,7 +234,7 @@ class MainWindow(QMainWindow):
         if hasattr(self, "_initial_node_name") and self._initial_node_name:
             spec = get_node_spec(self._initial_node_name)
             if spec:
-                self._table_model.set_columns(spec["csv_columns"])
+                self._table_model.set_columns(spec["columns"])
                 self._current_node_name = spec["name"]
             delattr(self, "_initial_node_name")
 
@@ -363,7 +361,7 @@ class MainWindow(QMainWindow):
     def _on_node_change(self, node_name: str) -> None:
         spec = get_node_spec(node_name)
         if spec:
-            self._table_model.set_columns(spec["csv_columns"])
+            self._table_model.set_columns(spec["columns"])
             self._table_model.clear()
             self._current_result = None
             self._current_node_name = spec["name"]

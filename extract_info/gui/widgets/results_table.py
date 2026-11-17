@@ -1,4 +1,4 @@
-"""Tabla de resultados con modelo, proxy para ordenar/filtrar y delegate para estados."""
+"""Tabla de resultados con modelo y proxy para ordenar/filtrar."""
 
 from __future__ import annotations
 
@@ -10,35 +10,15 @@ from PySide6.QtCore import (
     QSortFilterProxyModel,
     Qt,
 )
-from PySide6.QtWidgets import (
-    QHeaderView,
-    QStyledItemDelegate,
-    QStyleOptionViewItem,
-    QTableView,
-)
+from PySide6.QtWidgets import QHeaderView, QTableView
 
-HEADER_LABELS = {
-    "nombre_archivo": "Archivo",
-    "nombre_completo": "Nombre Completo",
-    "rut": "RUT",
-    "fecha_contrato": "Fecha Contrato",
-    "proto": "Nº Proto",
-    "repertorio": "Repertorio",
-    "fecha_repertorio": "Fecha Repertorio",
-    "cantidad_hojas": "Hojas",
-    "nombre_carpeta": "Carpeta",
-    "estado_extraccion": "Estado",
-    "observaciones": "Observaciones",
-    "Nombre Firmante": "Nombre",
-    "PROTOCOLIZADO Nº": "Nº Proto",
-    "Cantidad de páginas": "Hojas",
-}
+from extract_info.columns import ColumnKind, ColumnSpec, column_keys, find_kind
 
 
-def display_label(column: str) -> str:
-    """Etiqueta legible para la UI; las columnas del CSV no se tocan."""
+def _coerce_column(column: ColumnSpec | str) -> ColumnSpec:
+    """Acepta ColumnSpec o el nombre plano (tests y compatibilidad)."""
 
-    return HEADER_LABELS.get(column, column)
+    return column if isinstance(column, ColumnSpec) else ColumnSpec(key=column, label=column)
 
 
 def configure_headers(table: QTableView) -> None:
@@ -61,13 +41,29 @@ class ResultTableModel(QAbstractTableModel):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self._specs: list[ColumnSpec] = []
         self._columns: list[str] = []
         self._rows: list[dict] = []
 
-    def set_columns(self, columns: list[str]) -> None:
+    def set_columns(self, columns: list[ColumnSpec | str]) -> None:
         self.beginResetModel()
-        self._columns = columns
+        self._specs = [_coerce_column(column) for column in columns]
+        self._columns = column_keys(self._specs)
         self.endResetModel()
+
+    @property
+    def status_key(self) -> str | None:
+        """Clave de la columna de estado, si el esquema la declara."""
+
+        spec = find_kind(self._specs, ColumnKind.STATUS)
+        return spec.key if spec else None
+
+    @property
+    def folder_key(self) -> str | None:
+        """Clave de la columna de carpeta, si el esquema la declara."""
+
+        spec = find_kind(self._specs, ColumnKind.FOLDER)
+        return spec.key if spec else None
 
     def set_data(self, rows: list[dict]) -> None:
         self.beginResetModel()
@@ -109,12 +105,14 @@ class ResultTableModel(QAbstractTableModel):
         self, section: int, orientation: Qt.Orientation, role: int = Qt.ItemDataRole.DisplayRole
     ) -> Any:
         if orientation == Qt.Orientation.Horizontal:
-            if 0 <= section < len(self._columns):
-                column = self._columns[section]
+            if 0 <= section < len(self._specs):
+                spec = self._specs[section]
                 if role == Qt.ItemDataRole.DisplayRole:
-                    return display_label(column)
+                    # Norma de presentación: encabezados en mayúsculas. El CSV
+                    # conserva las claves canónicas (``spec.key``).
+                    return spec.label.upper()
                 if role == Qt.ItemDataRole.ToolTipRole:
-                    return column
+                    return spec.key
         return None
 
     def get_row_data(self, row: int) -> dict:
@@ -153,17 +151,19 @@ class ResultSortFilterProxyModel(QSortFilterProxyModel):
 
         row_data = model.get_row_data(source_row)
 
-        # Filtro por carpeta
+        # Filtro por carpeta (columna declarada, con fallback legacy)
         if self._filter_folder and self._filter_folder != "Todas":
-            folder_value = str(row_data.get("nombre_carpeta", ""))
+            folder_key = model.folder_key or "nombre_carpeta"
+            folder_value = str(row_data.get(folder_key, ""))
             if folder_value != self._filter_folder:
                 return False
 
-        # Filtro por estado
+        # Filtro por estado (columna declarada, con fallback legacy)
         if self._filter_estado and self._filter_estado != "Todos":
-            estado_value = str(
-                row_data.get("Estado", row_data.get("estado_extraccion", ""))
-            )
+            status_key = model.status_key
+            if status_key is None:
+                status_key = "Estado" if "Estado" in row_data else "estado_extraccion"
+            estado_value = str(row_data.get(status_key, ""))
             if self._filter_estado not in estado_value:
                 return False
 
@@ -178,36 +178,3 @@ class ResultSortFilterProxyModel(QSortFilterProxyModel):
                 return False
 
         return True
-
-
-class ResultRowDelegate(QStyledItemDelegate):
-    """Delegate que colorea filas según estado (EXITO/ADVERTENCIA/ERROR).
-
-    Usa colores definidos en QSS (assets/styles/style.QSS).
-    """
-
-    def paint(
-        self,
-        painter,
-        option: QStyleOptionViewItem,
-        index: QModelIndex,
-    ) -> None:
-        row_data = index.data(Qt.ItemDataRole.UserRole)
-        if not row_data:
-            super().paint(painter, option, index)
-            return
-
-        estado = str(row_data.get("Estado", row_data.get("estado_extraccion", ""))).upper()
-
-        # Poner propiedad de estado en la opción para que QSS pueda usarla
-        if "OK" in estado or "EXITO" in estado:
-            option.property("rowStatus", "exito")
-        elif "REVISAR" in estado or "ADVERTENCIA" in estado or "WARNING" in estado:
-            option.property("rowStatus", "advertencia")
-        elif "ERROR" in estado:
-            option.property("rowStatus", "error")
-        else:
-            super().paint(painter, option, index)
-            return
-
-        super().paint(painter, option, index)

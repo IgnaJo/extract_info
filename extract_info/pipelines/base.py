@@ -3,7 +3,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Callable, List, Optional
+from typing import Any, Callable, List, Optional, Sequence
+
+from extract_info.columns import (
+    ColumnKind,
+    ColumnSpec,
+    column_keys,
+    find_kind,
+)
 
 
 @dataclass
@@ -34,36 +41,60 @@ NODE_SPECS = {
     "Retail": {
         "name": "Retail",
         "description": "Contratos de tarjeta de crédito - Retail",
-        "csv_columns": [
-            "nombre_archivo",
-            "nombre_completo",
-            "rut",
-            "fecha_contrato",
-            "proto",
-            "repertorio",
-            "fecha_repertorio",
-            "cantidad_hojas",
-            "nombre_carpeta",
-            "estado_extraccion",
-            "observaciones",
-        ],
+        "columns": (
+            ColumnSpec("nombre_archivo", "Archivo", ColumnKind.FILENAME),
+            ColumnSpec("nombre_completo", "Nombre Completo"),
+            ColumnSpec("rut", "RUT"),
+            ColumnSpec("fecha_contrato", "Fecha Contrato", ColumnKind.DATE),
+            ColumnSpec("proto", "Nº Proto"),
+            ColumnSpec("repertorio", "Repertorio"),
+            ColumnSpec("fecha_repertorio", "Fecha Repertorio", ColumnKind.DATE),
+            ColumnSpec("cantidad_hojas", "Hojas", ColumnKind.NUMBER),
+            ColumnSpec("nombre_carpeta", "Carpeta", ColumnKind.FOLDER),
+            ColumnSpec("estado_extraccion", "Estado", ColumnKind.STATUS),
+            ColumnSpec("observaciones", "Observaciones", ColumnKind.NOTES),
+        ),
     },
     "Aseguradora": {
         "name": "Aseguradora",
         "description": "Documentos de Aseguradora - Notarial",
-        "csv_columns": [
-            "Archivo",
-            "Fecha Firma",
-            "RUN Firmante",
-            "Nombre Firmante",
-            "REP Nº",
-            "PROTOCOLIZADO Nº",
-            "REP Fecha",
-            "Cantidad de páginas",
-            "Estado",
-        ],
+        "columns": (
+            ColumnSpec("Archivo", "Archivo", ColumnKind.FILENAME),
+            ColumnSpec("Fecha Firma", "Fecha Firma", ColumnKind.DATE),
+            ColumnSpec("RUN Firmante", "RUN Firmante"),
+            ColumnSpec("Nombre Firmante", "Nombre"),
+            ColumnSpec("REP Nº", "REP Nº"),
+            ColumnSpec("PROTOCOLIZADO Nº", "Nº Proto"),
+            ColumnSpec("REP Fecha", "REP Fecha", ColumnKind.DATE),
+            ColumnSpec("Cantidad de páginas", "Hojas", ColumnKind.NUMBER),
+            ColumnSpec("Estado", "Estado", ColumnKind.STATUS),
+        ),
+    },
+    "Banco": {
+        "name": "Banco",
+        "description": "Contratos de crédito de consumo - Banco",
+        "columns": (
+            ColumnSpec("numero operacion", "numero operacion"),
+            ColumnSpec("fecha firma", "fecha firma", ColumnKind.DATE),
+            ColumnSpec("rut", "rut"),
+            ColumnSpec("nombre", "nombre"),
+            ColumnSpec("nº repertorio", "nº repertorio"),
+            ColumnSpec("Nº proto", "Nº proto"),
+            ColumnSpec("fecha repertorio", "fecha repertorio", ColumnKind.DATE),
+            ColumnSpec(
+                "número de paginas documento",
+                "número de paginas documento",
+                ColumnKind.NUMBER,
+            ),
+            ColumnSpec("Archivo", "Archivo", ColumnKind.FILENAME),
+            ColumnSpec("Estado", "Estado", ColumnKind.STATUS),
+        ),
     },
 }
+
+# ``csv_columns`` se deriva del esquema para no duplicar la verdad.
+for _spec in NODE_SPECS.values():
+    _spec["csv_columns"] = column_keys(_spec["columns"])
 
 
 def list_nodes() -> List[str]:
@@ -80,7 +111,7 @@ def process_folder(
     folder_path: str,
     process_single: Callable[[str], dict],
     node_name: str,
-    csv_columns: List[str],
+    columns: Sequence[ColumnSpec],
     progress_callback: Optional[Callable[[int, int, str], None]] = None,
     cancel_check: Optional[Callable[[], bool]] = None,
     pause_event: Optional[Any] = None,
@@ -91,7 +122,7 @@ def process_folder(
         folder_path: Ruta a la carpeta con PDFs.
         process_single: Función que procesa un solo PDF y retorna dict.
         node_name: Nombre del nodo (para logs).
-        csv_columns: Lista de columnas del CSV de salida.
+        columns: Esquema declarativo de columnas del CSV de salida.
         progress_callback: Función opcional para reportar progreso.
         cancel_check: Función opcional que retorna True si se debe cancelar.
         pause_event: Objeto threading.Event opcional.
@@ -105,6 +136,10 @@ def process_folder(
     from extract_info.extraction.file_discovery import discover_pdf_files
 
     logger = logging.getLogger(__name__)
+    csv_columns = column_keys(columns)
+    filename_column = find_kind(columns, ColumnKind.FILENAME)
+    status_column = find_kind(columns, ColumnKind.STATUS)
+    status_key = status_column.key if status_column else None
     logs: List[LogEntry] = []
     rows: List[dict] = []
 
@@ -139,13 +174,14 @@ def process_folder(
 
         try:
             row = process_single(pdf_path)
-            for column in ("nombre_archivo", "Archivo"):
-                if column in row:
-                    row[column] = filename
-                    break
+            unknown = set(row) - set(csv_columns)
+            if unknown:
+                raise ValueError(f"columnas no declaradas: {sorted(unknown)}")
+            if filename_column is not None and filename_column.key in row:
+                row[filename_column.key] = filename
             rows.append(row)
 
-            estado = row.get("Estado", row.get("estado_extraccion", ""))
+            estado = row.get(status_key, "") if status_key else ""
             if "OK" in str(estado).upper() or "EXITO" in str(estado).upper():
                 success_count += 1
                 level = "INFO"
@@ -174,7 +210,7 @@ def process_folder(
 
         except Exception as e:
             error_count += 1
-            error_row = _create_error_row(filename, str(e), csv_columns)
+            error_row = _create_error_row(filename, str(e), columns)
             rows.append(error_row)
 
             log_entry = LogEntry(
@@ -199,17 +235,18 @@ def process_folder(
     )
 
 
-def _create_error_row(filename: str, error_msg: str, csv_columns: List[str]) -> dict:
-    """Crea una fila de error con valores por defecto."""
+def _create_error_row(
+    filename: str, error_msg: str, columns: Sequence[ColumnSpec]
+) -> dict:
+    """Crea una fila de error usando la semántica declarada de cada columna."""
     row = {}
-    for col in csv_columns:
-        col_lower = col.lower()
-        if "archivo" in col_lower:
-            row[col] = filename
-        elif "estado" in col_lower:
-            row[col] = f"ERROR: {error_msg}"
-        elif "pagina" in col_lower:
-            row[col] = 0
+    for column in columns:
+        if column.kind == ColumnKind.FILENAME:
+            row[column.key] = filename
+        elif column.kind == ColumnKind.STATUS:
+            row[column.key] = f"ERROR: {error_msg}"
+        elif column.kind == ColumnKind.NUMBER:
+            row[column.key] = 0
         else:
-            row[col] = None
+            row[column.key] = None
     return row

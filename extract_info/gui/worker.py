@@ -8,6 +8,7 @@ from typing import Callable, Optional
 from PySide6.QtCore import QObject, QThread, Signal
 
 from extract_info.pipelines.aseguradora import aseguradora_process_folder
+from extract_info.pipelines.banco import banco_process_folder
 from extract_info.pipelines.retail import retail_process_folder
 
 
@@ -61,6 +62,13 @@ class PDFWorker(QObject):
                 )
             elif self._node_name == "Aseguradora":
                 result = aseguradora_process_folder(
+                    self._folder_path,
+                    progress_callback=progress_cb,
+                    cancel_check=cancel_cb,
+                    pause_event=self._pause_event,
+                )
+            elif self._node_name == "Banco":
+                result = banco_process_folder(
                     self._folder_path,
                     progress_callback=progress_cb,
                     cancel_check=cancel_cb,

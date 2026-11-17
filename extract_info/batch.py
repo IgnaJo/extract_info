@@ -11,6 +11,7 @@ from extract_info.extraction.file_discovery import discover_pdf_files
 from extract_info.models import ContratoSchema
 from extract_info.pipeline import process_pdf
 from extract_info.pipelines.aseguradora import aseguradora_process_folder
+from extract_info.pipelines.banco import banco_process_folder
 from extract_info.pipelines.retail import retail_process_folder
 
 logger = logging.getLogger(__name__)
@@ -20,6 +21,7 @@ MAX_PDFS_PER_FOLDER = 100
 _PIPELINE_RUNNERS = {
     "retail": retail_process_folder,
     "aseguradora": aseguradora_process_folder,
+    "banco": banco_process_folder,
 }
 
 

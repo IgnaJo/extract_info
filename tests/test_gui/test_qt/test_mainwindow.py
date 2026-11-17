@@ -144,11 +144,11 @@ def test_table_shows_display_labels_but_keeps_csv_keys(qapp):
     model = window._table_model
     assert model._columns[1] == "nombre_completo"
     labels = [model.headerData(c, Qt.Orientation.Horizontal) for c in range(4)]
-    assert labels == ["Archivo", "Nombre Completo", "RUT", "Fecha Contrato"]
+    assert labels == ["ARCHIVO", "NOMBRE COMPLETO", "RUT", "FECHA CONTRATO"]
 
     window.combo_node.setCurrentText("Aseguradora")
     model = window._table_model
     assert model._columns[5] == "PROTOCOLIZADO Nº"
-    assert model.headerData(5, Qt.Orientation.Horizontal) == "Nº Proto"
+    assert model.headerData(5, Qt.Orientation.Horizontal) == "Nº PROTO"
 
     window.close()

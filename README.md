@@ -63,7 +63,7 @@ python -m extract_info.gui
 
 **Características GUI:**
 - Drag & drop de carpetas con PDFs
-- Selector de pipeline (Retail / Aseguradora)
+- Selector de pipeline (Retail / Aseguradora / Banco)
 - Barra de progreso en tiempo real
 - Tabla de resultados con ordenamiento y filtros (carpeta, estado, texto)
 - Estados visuales por fila: 🟢 EXITO · 🟡 ADVERTENCIA · 🔴 ERROR
@@ -104,7 +104,22 @@ python -m extract_info.gui
 | `Cantidad de páginas` | Propiedades del PDF |
 | `Estado` | Calculado (`OK` / `REVISAR: ...`) |
 
-Los nombres de columna son el contrato del CSV con la base general: no se renombran por estética. La tabla de la GUI muestra etiquetas cortas (`nombre_completo` → "Nombre Completo", `PROTOCOLIZADO Nº` → "Nº Proto") definidas en `HEADER_LABELS`; el CSV exportado conserva siempre los nombres canónicos.
+### Pipeline Banco (contratos de crédito de consumo)
+
+| Campo | Origen |
+|---|---|
+| `numero operacion` | Hoja 9, ancla "N° de Operación" |
+| `fecha firma` | Hoja 9, ancla "Fecha" (`dd-mm-yyyy`) |
+| `rut` | Hoja 9, ancla "Cédula de Identidad" |
+| `nombre` | Hoja 9, ancla "Nombre Cliente" |
+| `nº repertorio` | Hoja 1, esquina superior derecha |
+| `Nº proto` | Hoja 1, esquina superior derecha |
+| `fecha repertorio` | Hoja 1, esquina superior derecha (`dd-mm-yyyy`) |
+| `número de paginas documento` | Propiedades del PDF (total de páginas) |
+| `Archivo` | Nombre del archivo |
+| `Estado` | Calculado (`OK` / `REVISAR: ...` / `ERROR: ...`) |
+
+Los nombres de columna son el contrato del CSV con la base general: no se renombran por estética. La tabla de la GUI muestra la etiqueta declarada de cada columna (`ColumnSpec.label`) en mayúsculas (norma de presentación, por ejemplo `nombre_completo` → "NOMBRE COMPLETO"); el CSV exportado conserva siempre las claves canónicas.
 
 ## Pipeline de Extracción
 
@@ -130,6 +145,7 @@ extract_info/
 │   │   ├── __init__.py
 │   │   ├── base.py               # BaseNode abstracto + dataclasses + list_nodes()
 │   │   ├── retail.py             # Pipeline contratos retail
+│   │   ├── banco.py              # Pipeline contratos banco
 │   │   └── aseguradora.py        # Pipeline aseguradora (coordenadas)
 │   ├── gui/                      # Interfaz gráfica PySide6
 │   │   ├── __init__.py
@@ -229,7 +245,7 @@ Un archivo CSV independiente por cada carpeta contenedora procesada:
 Con `--unified` (`-u`) se genera un único CSV consolidado con todos los documentos
 (`resultado_unificado.csv`).
 
-El pipeline se elige con `--pipeline` (`-p`): `retail` (default) o `aseguradora`.
+El pipeline se elige con `--pipeline` (`-p`): `retail` (default), `aseguradora` o `banco`.
 Las columnas del CSV dependen del pipeline elegido.
 
 ## Licencia
